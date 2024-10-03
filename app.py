@@ -2,6 +2,7 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
+from components.tabs.tab2 import render_tab2  # Import render function from tab2.py
 
 # Initialize the app
 app = dash.Dash(__name__)
@@ -38,7 +39,7 @@ def render_content(tab):
     if tab == 'home':
         # Content for the Home tab (text larger, bold, and centered, with minimal margin and no scrolling)
         return html.Div([
-            html.P("At BaNex Consulting, we empower the insurance industry to excel in today’s fast-paced world through cutting-edge, data-driven solutions that drive innovation, efficiency, and growth.",
+            html.P("At BaNex Consulting, we empower the insurance companies to excel in today’s fast-paced world through cutting-edge, data-driven solutions that drive innovation, efficiency, and growth.",
                    style={
                        'textAlign': 'center', 
                        'fontSize': '28px', 
@@ -98,17 +99,15 @@ def render_content(tab):
         })
 
     elif tab == 'tab-2':
-        # Placeholder content for Exploratory Data Analysis tab
-        return html.Div([
-            html.H2("Exploratory Data Analysis", style={'textAlign': 'center'}),
-            html.P("This section will display various exploratory data analysis outputs.", style={'textAlign': 'center'}),
-        ])
+        return render_tab2()  # Rendering the content from tab2.py with plots
+
     elif tab == 'tab-3':
         # Placeholder content for Model Performance tab
         return html.Div([
             html.H2("Model Performance", style={'textAlign': 'center'}),
             html.P("This section will display the performance of models.", style={'textAlign': 'center'}),
         ])
+    
     elif tab == 'tab-4':
         # Placeholder content for Stress Testing tab
         return html.Div([

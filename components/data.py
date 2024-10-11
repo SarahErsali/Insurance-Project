@@ -1,18 +1,6 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from xgboost import XGBRegressor
-from lightgbm import LGBMRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from xgboost import XGBRegressor
-from sklearn.metrics import mean_squared_error, r2_score, make_scorer, mean_absolute_error
-from sklearn.metrics import mean_absolute_percentage_error
-from sklearn.model_selection import GridSearchCV
-from IPython.display import display
-import math
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+
 
 
 # Set random seed for reproducibility
@@ -23,7 +11,7 @@ np.random.seed(42)
 # ----------------------------
 
 def simulate_economic_indicators(start_date='2008-01-01', end_date='2024-12-31'):
-    dates = pd.date_range(start=start_date, end=end_date, freq='M')  # Monthly frequency
+    dates = pd.date_range(start=start_date, end=end_date, freq='ME')  # Monthly frequency
     n = len(dates)
     data = pd.DataFrame({'Date': dates})
     
@@ -420,7 +408,21 @@ def generate_all_lob_data():
 # Generate final data
 final_data = generate_all_lob_data()
 
-#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+property_data = final_data[final_data['Line_of_Business'] == 'Property'].reset_index(drop = True)
+
+# Feature Engineering (adding temporal features)
+property_data['Year'] = property_data['Date'].dt.year
+property_data['Month'] = property_data['Date'].dt.month
+property_data['Quarter'] = property_data['Date'].dt.quarter
+
+# Make a copy of property_data to modify and drop unnecessary columns
+property_data_model = property_data.copy()
+
+# Since I'm focusing on property LOB, I drop 'Line_of_Business'
+property_data_model.drop(['Line_of_Business'], axis = 1, inplace = True)
+
+
 # Define crisis periods with monthly granularity
 crisis_periods = {
     'financial_crisis': {
@@ -446,20 +448,6 @@ crisis_periods = {
     },
 }
 
-property_data = final_data[final_data['Line_of_Business'] == 'Property'].reset_index(drop = True)
-
-# Ensuring Date is in datetime format
-property_data['Date'] = pd.to_datetime(property_data['Date'])
-
-# Feature Engineering (adding temporal features)
-property_data['Month'] = property_data['Date'].dt.month
-property_data['Quarter'] = property_data['Date'].dt.quarter
-
-# Make a copy of property_data to modify and drop unnecessary columns
-property_data_model = property_data.copy()
-
-# Since I'm focusing on property LOB, I drop 'Line_of_Business'
-property_data_model.drop(['Line_of_Business'], axis = 1, inplace = True)
 
 # Creating a full date range for econ_data that covers all relevant dates
 start_date = property_data_model['Date'].min()
@@ -475,18 +463,102 @@ for period in crisis_periods.values():
     mask = (econ_data['Date'] >= period['start']) & (econ_data['Date'] <= period['end'])
     econ_data.loc[mask, 'Is_Crisis'] = 1
 
+
 # Merge this corrected econ_data with final_data to get the Is_Crisis flag in final_data
 property_data_model = property_data_model.merge(econ_data[['Date', 'Is_Crisis']], on='Date', how='left')
 
 
 columns_to_check = [
-    'Date', 'GDP_Growth_Rate', 'Inflation_Rate', 'Unemployment_Rate', 'Interest_Rate',
+    'GDP_Growth_Rate', 'Inflation_Rate', 'Unemployment_Rate', 'Interest_Rate',
     'Equity_Return', 'Expenses', 'Month', 'Quarter',
-    'SCR', 'Is_Crisis', 'Claims_Incurred'
+    'SCR', 'Is_Crisis'
 ]
 
-
+# Create a new DataFrame with only the selected features
 property_data_feature_selected = property_data_model[columns_to_check]
+
+
+# Function to detect outliers based on IQR with crisis handling
+def detect_outliers_iqr(data, column, is_crisis):
+    """
+    Detect outliers using the IQR method for crisis or non-crisis periods.
+    
+    Parameters:
+    data (pd.DataFrame): The DataFrame containing the data.
+    column (str): The column to check for outliers.
+    is_crisis (bool): Flag to indicate if checking crisis (True) or non-crisis (False) period.
+    
+    Returns:
+    pd.DataFrame: DataFrame with detected outliers.
+    """
+    # Separate crisis and non-crisis data
+    if is_crisis:
+        data = data[data['Is_Crisis'] == 1]
+    else:
+        data = data[data['Is_Crisis'] == 0]
+    
+    # Check if data is available for outlier detection
+    if data.empty:
+        return pd.DataFrame()  # Return empty DataFrame if no data
+    
+    # Calculate Q1 (25th percentile) and Q3 (75th percentile)
+    Q1 = data[column].quantile(0.25)
+    Q3 = data[column].quantile(0.75)
+    IQR = Q3 - Q1  # Interquartile range
+    
+    # Define bounds for outliers
+    lower_bound = Q1 - 2 * IQR  # The 1.5 value for boundary is too restrictive, so 2 is better
+    upper_bound = Q3 + 2 * IQR
+    
+    # Return rows where the column value is outside the bounds
+    return data[(data[column] < lower_bound) | (data[column] > upper_bound)]
+
+# Detect outliers in each selected column for crisis and non-crisis periods
+outliers = {'crisis': {}, 'non_crisis': {}}
+for col in columns_to_check:
+    if col in property_data_feature_selected.columns:
+        # Outliers in crisis periods
+        outliers['crisis'][col] = detect_outliers_iqr(property_data_feature_selected, col, is_crisis=True)
+        print(f"Outliers detected in crisis period for {col}: {outliers['crisis'][col].shape[0]}")
+        
+        # Outliers in non-crisis periods
+        outliers['non_crisis'][col] = detect_outliers_iqr(property_data_feature_selected, col, is_crisis=False)
+        print(f"Outliers detected in non-crisis period for {col}: {outliers['non_crisis'][col].shape[0]}")
+    else:
+        print(f"Column '{col}' not found in property_data_feature_selected.")
+
+# Display the outliers detected in 'Claims_Incurred' for crisis periods
+if 'Claims_Incurred' in outliers['crisis']:
+    display(outliers['crisis']['Claims_Incurred'])
+else:
+    print("No outliers detected in 'Claims_Incurred' during crisis periods or column not found.")
+
+# Display the outliers detected in 'Claims_Incurred' for non-crisis periods
+if 'Claims_Incurred' in outliers['non_crisis']:
+    display(outliers['non_crisis']['Claims_Incurred'])
+else:
+    print("No outliers detected in 'Claims_Incurred' during non-crisis periods or column not found.")
+
+
+# Counts of 'Is_Crisis' column
+print("Counts of 'Is_Crisis':\n", property_data_feature_selected['Is_Crisis'].value_counts())
+
+# Check distribution of created outlier flags
+for col in columns_to_check:
+    outlier_col = f'{col}_Is_Outlier'
+    if outlier_col in property_data_feature_selected.columns:
+        print(f"Counts of '{outlier_col}':\n", property_data_feature_selected[outlier_col].value_counts())
+
+
+
+# Include 'Date' if you want to use it for filtering
+selected_features_with = columns_to_check + ['Date', 'Claims_Incurred']
+
+# Ensure 'Date' column is included
+property_data_feature_selected = property_data_model[selected_features_with]
+
+
+### Note: The XGBoost library does not support datetime64[ns] data types, therefore Date has to be dropped from X
 
 # Training set: 2008-2019
 train_data = property_data_feature_selected[(property_data_feature_selected['Date'].dt.year >= 2008) & (property_data_feature_selected['Date'].dt.year <= 2019)]
@@ -497,24 +569,6 @@ val_data = property_data_feature_selected[(property_data_feature_selected['Date'
 # Blind test set: 2023-2024
 blind_test_data = property_data_feature_selected[(property_data_feature_selected['Date'].dt.year >= 2023) & (property_data_feature_selected['Date'].dt.year <= 2024)]
 
-
-train_data = property_data_feature_selected[
-    (property_data_feature_selected['Date'].dt.year >= 2008) & 
-    (property_data_feature_selected['Date'].dt.year <= 2019)
-]
-
-val_data = property_data_feature_selected[
-    (property_data_feature_selected['Date'].dt.year >= 2020) & 
-    (property_data_feature_selected['Date'].dt.year <= 2022)
-]
-
-blind_test_data = property_data_feature_selected[
-    (property_data_feature_selected['Date'].dt.year >= 2023) & 
-    (property_data_feature_selected['Date'].dt.year <= 2024)
-]
-
-#X_blind_test = blind_test_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
-
 X_train = train_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore') 
 y_train = train_data['Claims_Incurred']
 
@@ -523,137 +577,11 @@ y_val = val_data['Claims_Incurred']
 
 X_blind_test = blind_test_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
 y_blind_test = blind_test_data['Claims_Incurred']
+y_blind_test.index = blind_test_data['Date']  # This ensures that y_blind_test has a datetime index instead of an integer index
 
 # Combine Training and Validation Sets
 X_combined = pd.concat([X_train, X_val], ignore_index=True)
 y_combined = pd.concat([y_train, y_val], ignore_index=True)
 
-xgb_best_params = {
-    'n_estimators': 100,
-    'max_depth': 5,
-    'learning_rate': 0.1,
-    'subsample': 0.8,
-    'colsample_bytree': 1,
-    'gamma': 0,
-}
-
-re_xgb_model = XGBRegressor(**xgb_best_params)
-re_xgb_model.fit(X_combined, y_combined)
-
-# Generating predictions for the blind test set
-xgb_blind_test_preds = re_xgb_model.predict(X_blind_test)
-
-lgb_best_params = {
-    'n_estimators': 200,
-    'max_depth': 5,  
-    'learning_rate': 0.1,
-    'num_leaves': 10
-}
-
-# Initialize the LightGBM model with best hyperparameters
-re_lgb_model = LGBMRegressor(**lgb_best_params)
-
-# Retrain the model on the combined training and validation set
-re_lgb_model.fit(X_combined, y_combined)
-lgb_blind_test_preds = re_lgb_model.predict(X_blind_test)
-
-
-# Calculate metrics for retrained XGBoost model
-re_xgb_blind_test_rmse = np.sqrt(mean_squared_error(y_blind_test, xgb_blind_test_preds))
-re_xgb_blind_test_mae = mean_absolute_error(y_blind_test, xgb_blind_test_preds)
-re_xgb_blind_test_mape = mean_absolute_percentage_error(y_blind_test, xgb_blind_test_preds) * 100  # MAPE as percentage
-re_xgb_blind_test_r2 = r2_score(y_blind_test, xgb_blind_test_preds)
-
-# Calculate metrics for retrained LightGBM model
-re_lgb_blind_test_rmse = np.sqrt(mean_squared_error(y_blind_test, lgb_blind_test_preds))
-re_lgb_blind_test_mae = mean_absolute_error(y_blind_test, lgb_blind_test_preds)
-re_lgb_blind_test_mape = mean_absolute_percentage_error(y_blind_test, lgb_blind_test_preds) * 100  # MAPE as percentage
-re_lgb_blind_test_r2 = r2_score(y_blind_test, lgb_blind_test_preds)
-
-# Print retrained model metrics
-print(f"Retrained XGBoost - Blind Test RMSE: {re_xgb_blind_test_rmse:.4f}")
-print(f"Retrained XGBoost - Blind Test MAE: {re_xgb_blind_test_mae:.4f}")
-print(f"Retrained XGBoost - Blind Test MAPE: {re_xgb_blind_test_mape:.2f}%")
-print(f"Retrained XGBoost - Blind Test R²: {re_xgb_blind_test_r2:.4f}")
-
-print(f"Retrained LightGBM - Blind Test RMSE: {re_lgb_blind_test_rmse:.4f}")
-print(f"Retrained LightGBM - Blind Test MAE: {re_lgb_blind_test_mae:.4f}")
-print(f"Retrained LightGBM - Blind Test MAPE: {re_lgb_blind_test_mape:.2f}%")
-print(f"Retrained LightGBM - Blind Test R²: {re_lgb_blind_test_r2:.4f}")
-
-# Define storm periods from your simulation
-storm_periods = {
-    'storm_event_1': {'start': '2020-06-15', 'end': '2020-09-13'},
-    'storm_event_2': {'start': '2022-07-20', 'end': '2022-09-02'},
-    'storm_event_3': {'start': '2023-05-08', 'end': '2023-07-30'}
-}
-
-# Function to filter storm periods
-def get_storm_periods(data, storm_periods):
-    storm_data = pd.DataFrame()
-    for storm in storm_periods.values():
-        mask = (data['Date'] >= storm['start']) & (data['Date'] <= storm['end'])
-        storm_data = pd.concat([storm_data, data[mask]])
-    return storm_data
-
-
-# Get storm period data
-storm_data = get_storm_periods(property_data_feature_selected, storm_periods)
-
-# Get non-storm data
-# The ~ (tilde) operator is a bitwise negation operator, which effectively inverts the boolean mask. So:True becomes False and vice verca.
-#  ~ is used to select dates that are not in the storm periods.
-non_storm_data = property_data_feature_selected[~property_data_feature_selected['Date'].isin(storm_data['Date'])]
-
-# Storm period predictions
-storm_X = storm_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
-storm_y = storm_data['Claims_Incurred']
-
-# Non-storm period predictions
-non_storm_X = non_storm_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
-non_storm_y = non_storm_data['Claims_Incurred']
-
-# Predict on storm and non-storm data
-storm_xgb_preds = re_xgb_model.predict(storm_X)
-non_storm_xgb_preds = re_xgb_model.predict(non_storm_X)
-
-storm_lgb_preds = re_lgb_model.predict(storm_X)
-non_storm_lgb_preds = re_lgb_model.predict(non_storm_X)
-
-# Evaluate the models on storm and non-storm data
-def evaluate_model_performance(y_true, y_pred):
-    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    mae = mean_absolute_error(y_true, y_pred)
-    mape = mean_absolute_percentage_error(y_true, y_pred) * 100  # Percentage
-    r2 = r2_score(y_true, y_pred)
-    return rmse, mae, mape, r2
-
-# XGBoost model performance
-storm_xgb_performance = evaluate_model_performance(storm_y, storm_xgb_preds)
-non_storm_xgb_performance = evaluate_model_performance(non_storm_y, non_storm_xgb_preds)
-
-# LightGBM model performance
-storm_lgb_performance = evaluate_model_performance(storm_y, storm_lgb_preds)
-non_storm_lgb_performance = evaluate_model_performance(non_storm_y, non_storm_lgb_preds)
-
-
-
-# Exporting necessary data and predictions for the dashboard
-export_data = {
-    'y_blind_test': y_blind_test,
-    'xgb_blind_test_preds': xgb_blind_test_preds,
-    'lgb_blind_test_preds': lgb_blind_test_preds,
-    're_xgb_blind_test_rmse': re_xgb_blind_test_rmse,
-    're_xgb_blind_test_mae': re_xgb_blind_test_mae,
-    're_xgb_blind_test_mape': re_xgb_blind_test_mape,
-    're_xgb_blind_test_r2': re_xgb_blind_test_r2,
-    're_lgb_blind_test_rmse': re_lgb_blind_test_rmse,
-    're_lgb_blind_test_mae': re_lgb_blind_test_mae,
-    're_lgb_blind_test_mape': re_lgb_blind_test_mape,
-    're_lgb_blind_test_r2': re_lgb_blind_test_r2,
-    'storm_y': storm_y,
-    'storm_xgb_preds': storm_xgb_preds,
-    'storm_lgb_preds': storm_lgb_preds,
-    'storm_xgb_performance': storm_xgb_performance,
-    'storm_lgb_performance': storm_lgb_performance
-}
+# Export the variables
+__all__ = ['X_train', 'y_train', 'X_val', 'y_val', 'X_combined', 'y_combined', 'X_blind_test', 'y_blind_test']

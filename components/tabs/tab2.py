@@ -53,7 +53,7 @@ def render_tab2():
     stats_elements = calculate_statistics(final_data)
 
     return html.Div([
-        html.H2("✔️ Key metrics and correlation analysis of the dataset based on line of business", style={'textAlign': 'left','marginBottom': '20px', 'fontSize': '30px'}),
+        html.H2("Key metrics and correlation analysis of the dataset based on line of business", style={'textAlign': 'left','marginBottom': '20px', 'fontSize': '30px'}),
         
         # Key insights
         html.Ul([

@@ -1,14 +1,30 @@
+import pandas as pd
+import numpy as np
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
-from components.tabs.tab2 import render_tab2  # Import render function from tab2.py
+from components.tabs.tab2 import render_tab2
+from components.tabs.tab1 import render_tab1
+from components.tabs.tab3 import render_tab3
+from components.data import X_combined, y_combined, X_blind_test, y_blind_test
+from components.model_functions import (
+    get_xgboost_predictions,
+    get_lightgbm_predictions,
+    get_arima_predictions,
+    get_moving_average_predictions,
+    calculate_model_metrics,
+    arima_test_data,
+    ma_y_test,
+    arima_train_data
+)
+
 
 # Initialize the app
 app = dash.Dash(__name__)
 
 # Set the app title
-app.title = "Business Consultant Service"
+app.title = "Insurance Consultant Service"
 
 # Define the layout of the app
 app.layout = html.Div([
@@ -37,83 +53,156 @@ app.layout = html.Div([
 )
 def render_content(tab):
     if tab == 'home':
-        # Content for the Home tab (text larger, bold, and centered, with minimal margin and no scrolling)
         return html.Div([
-            html.P("At BaNex Consulting, we empower the insurance companies to excel in today’s fast-paced world through cutting-edge, data-driven solutions that drive innovation, efficiency, and growth.",
-                   style={
-                       'textAlign': 'center', 
-                       'fontSize': '28px', 
-                       'marginTop': '2vh', 
-                       'lineHeight': '1.9',
-                       'maxWidth': '80%',  # Constrains the width of the paragraph
-                       'marginLeft': 'auto', 
-                       'marginRight': 'auto',  # Centers the text horizontally
-                       'padding': '0 2cm'  # Adds 2cm padding on left and right
-                   }),
+            html.P("At BaNex Consulting, we empower the insurance industry to excel in today’s fast-paced world through cutting-edge, data-driven solutions that drive innovation, efficiency, and growth.",
+                   style={'textAlign': 'center', 'fontSize': '28px', 'marginTop': '2vh', 'lineHeight': '1.9',
+                          'maxWidth': '80%', 'marginLeft': 'auto', 'marginRight': 'auto', 'paddingLeft': '3cm',
+                          'paddingRight': '3cm'}),
         ], style={'display': 'flex', 'flexDirection': 'column', 'justifyContent': 'center', 'alignItems': 'center', 'height': '60vh'})
-    
+
     elif tab == 'tab-1':
-        # Business Objectives tab with summary of project and data
-        return html.Div([
-
-            # Business Problem
-            html.H3("Business Problem", style={'marginBottom': '20px', 'fontSize': '30px'}),
-            html.P("The project focuses on the property line of business within the insurance industry. "
-                   "The key goal is to predict Solvency capital requirement (SCR) through developing predictive models for insurance claims incurred, factoring in various "
-                   "economic indicators, crisis periods, and natural disasters' impact to improve business decisions.",
-                   style={'lineHeight': '2', 'marginBottom': '30px'}),
-
-            # Model Developed
-            html.H3("Model Developed", style={'marginBottom': '20px', 'fontSize': '30px'}),
-            html.P("For this project, advanced machine learning models such as XGBoost and LightGBM were developed. "
-                   "These models help predict claims incurred based on a variety of features, including economic data, "
-                   "insurance data, and specific factors affecting the property insurance line.",
-                   style={'lineHeight': '2', 'marginBottom': '30px'}),
-
-            # Data Summary
-            html.H3("Data Summary", style={'marginBottom': '20px', 'fontSize': '30px'}),
-            html.Ul([
-                html.Li([html.B("Features:"), " A wide range of features were used, including underwriting risk, number of policies, expenses, etc."]),
-                html.Li([html.B("Economic Data:"), " This includes key macroeconomic indicators that impact claims behavior, "
-                        "such as GDP growth rate, inflation rate, unemployment rate, interest rate, and equity return."]),
-                html.Li([html.B("Crisis Periods:"), " The dataset includes multiple crisis periods like the 2008 Financial "
-                        "Crisis, the European Debt Crisis, and the COVID-19 pandemic. Each of these periods has a "
-                        "significant impact on the model's predictions, as they affect economic indicators and insurance "
-                        "risk."]),
-                html.Li([html.B("Natural Disaster:"), " Several storm periods in the dataset typically cause a spike in property insurance claims, impacting the risk evaluation."])
-            ], style={'lineHeight': '2', 'marginBottom': '30px'}),
-
-            # Impact on Business Model
-            html.H3("Impact on Analysis and Business Model", style={'marginBottom': '20px', 'fontSize': '30px'}),
-            html.P("The features and factors used in the models play a critical role in understanding how external "
-                   "factors, such as the economy and catastrophic events, influence the number of claims. This aids in "
-                   "refining the insurance pricing strategy and improving risk management practices.",
-                   style={'lineHeight': '2', 'marginBottom': '30px'})
-        ], style={
-            'padding': '10px',  # Less padding for left and right margins
-            'textAlign': 'left',
-            'maxWidth': '90%',  # More space for content width
-            'marginLeft': 'auto',  # Center the div horizontally
-            'marginRight': 'auto',
-            'lineHeight': '1.8',  # Increase line height for readability
-        })
+        return render_tab1()
 
     elif tab == 'tab-2':
-        return render_tab2()  # Rendering the content from tab2.py with plots
+        return render_tab2()
 
     elif tab == 'tab-3':
-        # Placeholder content for Model Performance tab
-        return html.Div([
-            html.H2("Model Performance", style={'textAlign': 'center'}),
-            html.P("This section will display the performance of models.", style={'textAlign': 'center'}),
-        ])
+        return render_tab3()
     
     elif tab == 'tab-4':
-        # Placeholder content for Stress Testing tab
         return html.Div([
             html.H2("Model Robustness", style={'textAlign': 'center'}),
             html.P("This section will showcase the results of stress testing.", style={'textAlign': 'center'}),
         ])
+
+
+# Callback for Model Predictions Plot
+@app.callback(
+    Output('model-comparison-graph', 'figure'),
+    Input('model-dropdown-prediction', 'value')
+)
+def update_model_predictions(models_selected):
+    fig = go.Figure()
+
+    # Fetch predictions for each selected model
+    for model in models_selected:
+        if model == 'xgboost':
+            preds = get_xgboost_predictions(X_combined, y_combined, X_blind_test)
+            print(f"XGBoost Predictions: {preds}")
+            preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
+            fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='XGBoost', line=dict(color='purple')))
+
+        if model == 'lightgbm':
+            preds = get_lightgbm_predictions(X_combined, y_combined, X_blind_test)
+            print(f"LightGBM Predictions: {preds}")
+            preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
+            fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='LightGBM', line=dict(color='blue')))
+
+        if model == 'arima':
+            preds = get_arima_predictions(arima_train_data, arima_test_data, (3, 2, 3), (1, 1, 1, 12))
+            print(f"ARIMA Predictions: {preds}")
+            preds = pd.Series(preds, index=arima_test_data.index)
+            fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='ARIMA', line=dict(color='green')))
+
+        if model == 'moving_average':
+            preds = get_moving_average_predictions(ma_y_test, window_size=3)
+            print(f"Moving Average Predictions: {preds}")
+            preds = pd.Series(preds, index=ma_y_test.index)
+            fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='Moving Average', line=dict(color='red')))
+
+    # Add the actual values to the original graph
+    fig.add_trace(go.Scatter(x=y_blind_test.index, y=y_blind_test, mode='lines', name='Actual', line=dict(color='black', dash='dot')))
+    fig.update_layout(xaxis_title='Date', yaxis_title='Claims Incurred', xaxis_showgrid=False, yaxis_showgrid=False)
+
+    return fig
+
+
+# Callback for Metrics Bar Chart
+@app.callback(
+    Output('model-metrics-bar-chart', 'figure'),
+    Input('model-dropdown-metrics', 'value')
+)
+def update_metrics_chart(models_selected):
+    # New figure for the metrics bar chart
+    metrics_fig = go.Figure()
+
+    # Metrics storage for bias, accuracy, and MAPE
+    metrics = {'Bias': [], 'Accuracy': [], 'MAPE': []}
+    model_names = []
+
+
+    # Fetch metrics for each selected model
+    for model in models_selected:
+        if model == 'xgboost':
+            preds = get_xgboost_predictions(X_combined, y_combined, X_blind_test)
+            preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
+            model_metrics = calculate_model_metrics(y_blind_test, preds)
+            model_names.append('XGBoost')
+            metrics['Bias'].append(model_metrics['Bias'] / 1000)
+            metrics['Accuracy'].append(model_metrics['Accuracy'])
+            metrics['MAPE'].append(model_metrics['MAPE'])
+
+        if model == 'lightgbm':
+            preds = get_lightgbm_predictions(X_combined, y_combined, X_blind_test)
+            preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
+            model_metrics = calculate_model_metrics(y_blind_test, preds)
+            model_names.append('LightGBM')
+            metrics['Bias'].append(model_metrics['Bias'] / 1000)
+            metrics['Accuracy'].append(model_metrics['Accuracy'])
+            metrics['MAPE'].append(model_metrics['MAPE'])
+
+        if model == 'arima':
+            preds = get_arima_predictions(arima_train_data, arima_test_data, (3, 2, 3), (1, 1, 1, 12))
+            preds = pd.Series(preds, index=arima_test_data.index)
+            model_metrics = calculate_model_metrics(y_blind_test, preds)
+            model_names.append('ARIMA')
+            metrics['Bias'].append(model_metrics['Bias'] / 1000)
+            metrics['Accuracy'].append(model_metrics['Accuracy'])
+            metrics['MAPE'].append(model_metrics['MAPE'])
+
+        if model == 'moving_average':
+            preds = get_moving_average_predictions(ma_y_test, window_size=3)
+            preds = pd.Series(preds, index=ma_y_test.index)
+            model_metrics = calculate_model_metrics(y_blind_test, preds)
+            model_names.append('Moving Average')
+            metrics['Bias'].append(model_metrics['Bias'] / 1000)
+            metrics['Accuracy'].append(model_metrics['Accuracy'])
+            metrics['MAPE'].append(model_metrics['MAPE'])
+
+    
+    # Debug output to track what is happening
+    print("Metrics before plotting:")
+    print("Model Names:", model_names)
+    print("Bias Values:", metrics['Bias'])
+    print("Accuracy Values:", metrics['Accuracy'])
+    print("MAPE Values:", metrics['MAPE'])
+
+
+    # keep the Debug: Convert NaNs to 0 and ensure all values are floats
+    for key in metrics:
+        metrics[key] = [0.0 if np.isnan(value) else float(value) for value in metrics[key]]
+    
+
+
+    # Create a horizontal bar chart for metrics (Bias, Accuracy, MAPE)
+    metrics_fig.add_trace(go.Bar(y=model_names, x=metrics['Bias'], name='Bias', marker_color='orange', opacity=0.7, orientation='h'))
+    metrics_fig.add_trace(go.Bar(y=model_names, x=metrics['Accuracy'], name='Accuracy', marker_color='green', opacity=0.5, orientation='h'))
+    metrics_fig.add_trace(go.Bar(y=model_names, x=metrics['MAPE'], name='MAPE', marker_color='blue', opacity=0.5, orientation='h'))
+
+    metrics_fig.update_layout(
+        barmode='group',
+        #title="Model Performance Metrics",
+        #yaxis_title="Model",
+        xaxis_title="Metric Value",
+        xaxis_showgrid=False,
+        yaxis_showgrid=False,
+        bargap=0.15,  # Increase space between bars
+        bargroupgap=0.1  # Increase space between groups
+    )
+
+    return metrics_fig
+
+
 
 # Run the app
 if __name__ == '__main__':

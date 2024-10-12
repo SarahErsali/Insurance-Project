@@ -8,6 +8,12 @@ import statsmodels.api as sm
 from sklearn.metrics import (mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error)
 import shap
 from components.data import X_train, y_train, X_val, y_val, X_blind_test, y_blind_test, property_data_model
+import matplotlib
+matplotlib.use('Agg')  # Switch to a non-interactive backend
+import matplotlib.pyplot as plt
+import os
+
+
 
 
 
@@ -96,7 +102,7 @@ from components.data import X_train, y_train, X_val, y_val, X_blind_test, y_blin
 X_combined = pd.concat([X_train, X_val], ignore_index=True)
 y_combined = pd.concat([y_train, y_val], ignore_index=True)
 
-
+# XGBoost best parameters
 xgb_best_params = {
     'n_estimators': 100,
     'max_depth': 5,
@@ -106,13 +112,11 @@ xgb_best_params = {
     'gamma': 0,
 }
 
-# Initialize the XGBoost model with best hyperparameters
+# # Retrain the XGBoost model with best hyperparameters
 re_xgb_model = XGBRegressor(**xgb_best_params)
-
-# Retrain the model on the combined training and validation set
 re_xgb_model.fit(X_combined, y_combined)
 
-
+# LightGBM best parameters
 lgb_best_params = {
     'n_estimators': 200,
     'max_depth': 5,  
@@ -120,10 +124,8 @@ lgb_best_params = {
     'num_leaves': 10
 }
 
-# Initialize the LightGBM model with best hyperparameters
+# # Retrain the XGBoost model with best hyperparameters
 re_lgb_model = LGBMRegressor(**lgb_best_params)
-
-# Retrain the model on the combined training and validation set
 re_lgb_model.fit(X_combined, y_combined)
 
 # # Predict on the blind test set
@@ -290,6 +292,8 @@ def get_xgboost_predictions(X_combined, y_combined, X_blind_test):
     return re_xgb_model.predict(X_blind_test)
 
 
+#-------------------------------------------------------------------------------------
+
 # Function to get LightGBM predictions
 def get_lightgbm_predictions(X_combined, y_combined, X_blind_test):
     re_lgb_model = LGBMRegressor(**lgb_best_params)
@@ -297,11 +301,9 @@ def get_lightgbm_predictions(X_combined, y_combined, X_blind_test):
     return re_lgb_model.predict(X_blind_test)
 
 
-# # Function to get ARIMA predictions
-# def get_arima_predictions(arima_train_data, arima_test_data, best_pdq, best_seasonal_pdq):
-#     final_arima_model = sm.tsa.SARIMAX(arima_y_train, order=best_pdq, seasonal_order=best_seasonal_pdq)
-#     final_arima_model_fit = final_arima_model.fit(disp=False)
-#     return final_arima_model_fit.forecast(steps=len(arima_test_data))
+#-------------------------------------------------------------------------------------
+
+
 # Function to get ARIMA predictions
 def get_arima_predictions(arima_train_data, arima_test_data, best_pdq, best_seasonal_pdq):
     # Define target for training
@@ -323,11 +325,17 @@ def get_arima_predictions(arima_train_data, arima_test_data, best_pdq, best_seas
     return arima_forecast
 
 
+#-------------------------------------------------------------------------------------
+
 # Function to get Moving Average predictions
 def get_moving_average_predictions(ma_y_test, window_size):
     return ma_y_test.rolling(window=window_size).mean().shift(1).fillna(ma_y_test.mean())
 
 
+#-------------------------------------------------------------------------------------
+
+
+# Function to get performance metrics
 def calculate_model_metrics(y_true, y_pred):
     # Convert to numpy arrays
     y_true = np.array(y_true)
@@ -336,20 +344,47 @@ def calculate_model_metrics(y_true, y_pred):
     # Handle cases where y_true contains zeros to avoid division by zero in MAPE
     y_true_safe = np.where(y_true == 0, np.finfo(float).eps, y_true)  # Replace 0 with a small epsilon value
 
-    # Calculate Bias
     bias = np.mean(y_pred - y_true)
 
-    # Calculate MAPE (using the safe version of y_true)
+    # using the safe version of y_true
     mape = np.mean(np.abs((y_true - y_pred) / y_true_safe)) * 100
 
-    # Calculate Accuracy (100 - MAPE)
     accuracy = 100 - mape
 
     return {'Bias': bias, 'MAPE': mape, 'Accuracy': accuracy}
 
+#-------------------------------------------------------------------------------------
+# Ensure your project root and assets folder is correctly targeted
+assets_folder_path = os.path.join(os.getcwd(), 'assets')
 
+# Function to get SHAP plots
+def generate_shap_plot_xgboost(X_combined, y_combined, X_blind_test):
+    re_xgb_model = XGBRegressor(**xgb_best_params)
+    re_xgb_model.fit(X_combined, y_combined)
+    explainer = shap.Explainer(re_xgb_model, X_blind_test)
+    shap_values = explainer(X_blind_test)
 
+    plt.figure()
+    shap.summary_plot(shap_values, X_blind_test, show=False)  # Prevent it from showing directly
+    save_path_xgb = os.path.join(assets_folder_path, 'shap_summary_xgboost.png')
+    plt.savefig(save_path_xgb)  # Save the plot to assets folder
+    plt.close()  # Close the plot to avoid memory issues
 
+def generate_shap_plot_lightgbm(X_combined, y_combined, X_blind_test):
+    re_lgb_model = LGBMRegressor(**lgb_best_params)
+    re_lgb_model.fit(X_combined, y_combined)
+    explainer = shap.Explainer(re_lgb_model, X_blind_test)
+    shap_values = explainer(X_blind_test)
+
+    plt.figure()
+    shap.summary_plot(shap_values, X_blind_test, show=False)  # Prevent it from showing directly
+    save_path_lgb = os.path.join(assets_folder_path, 'shap_summary_lightgbm.png')
+    plt.savefig(save_path_lgb)  # Save the plot to assets folder
+    plt.close()  # Close the plot to avoid memory issues
+
+# Generate SHAP plots by calling the functions
+generate_shap_plot_xgboost(X_combined, y_combined, X_blind_test)
+generate_shap_plot_lightgbm(X_combined, y_combined, X_blind_test)
 
 
 # Export the variables

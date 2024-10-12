@@ -1,4 +1,11 @@
 from dash import dcc, html
+from dash.dependencies import Input, Output
+import shap
+import plotly.graph_objs as go
+import matplotlib
+matplotlib.use('Agg')  # Switch to a non-interactive backend
+import matplotlib.pyplot as plt
+
 
 def render_tab3():
     return html.Div([
@@ -66,6 +73,27 @@ def render_tab3():
         ),
 
         # Graph for comparing models' metrics (Bias, Accuracy, MAPE)
-        dcc.Graph(id='model-metrics-bar-chart')
+        dcc.Graph(id='model-metrics-bar-chart'),
+
+        
+        
+        # SHAP Plots (after performance metrics)
+        html.H2("SHAP Summary Plots", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '50px'}),
+
+        # XGBoost SHAP Plot Section
+        html.Div([
+            html.Div([
+                html.H3("XGBoost Model", style={'textAlign': 'left', 'fontSize': '20px', 'marginRight': '20px'}),
+                html.Img(src='/assets/shap_summary_xgboost.png', style={'height':'60%', 'width':'60%', 'display': 'block', 'marginLeft': '4cm'}),
+            ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flex-start'}),
+        ], style={'marginBottom': '60px'}),
+
+        # LightGBM SHAP Plot Section
+        html.Div([
+            html.Div([
+                html.H3("LightGBM Model", style={'textAlign': 'left', 'fontSize': '20px', 'marginRight': '20px'}),
+                html.Img(src='/assets/shap_summary_lightgbm.png', style={'height':'60%', 'width':'60%', 'display': 'block', 'marginLeft': '4cm'}),
+            ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flex-start'}),
+        ], style={'marginTop': '50px'})
 
     ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})

@@ -4,6 +4,7 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
+import shap
 from components.tabs.tab2 import render_tab2
 from components.tabs.tab1 import render_tab1
 from components.tabs.tab3 import render_tab3
@@ -16,7 +17,7 @@ from components.model_functions import (
     calculate_model_metrics,
     arima_test_data,
     ma_y_test,
-    arima_train_data
+    arima_train_data,
 )
 
 
@@ -76,6 +77,8 @@ def render_content(tab):
         ])
 
 
+    
+
 # Callback for Model Predictions Plot
 @app.callback(
     Output('model-comparison-graph', 'figure'),
@@ -88,25 +91,25 @@ def update_model_predictions(models_selected):
     for model in models_selected:
         if model == 'xgboost':
             preds = get_xgboost_predictions(X_combined, y_combined, X_blind_test)
-            print(f"XGBoost Predictions: {preds}")
+            #print(f"XGBoost Predictions: {preds}")
             preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='XGBoost', line=dict(color='purple')))
 
         if model == 'lightgbm':
             preds = get_lightgbm_predictions(X_combined, y_combined, X_blind_test)
-            print(f"LightGBM Predictions: {preds}")
+            #print(f"LightGBM Predictions: {preds}")
             preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='LightGBM', line=dict(color='blue')))
 
         if model == 'arima':
             preds = get_arima_predictions(arima_train_data, arima_test_data, (3, 2, 3), (1, 1, 1, 12))
-            print(f"ARIMA Predictions: {preds}")
+            #print(f"ARIMA Predictions: {preds}")
             preds = pd.Series(preds, index=arima_test_data.index)
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='ARIMA', line=dict(color='green')))
 
         if model == 'moving_average':
             preds = get_moving_average_predictions(ma_y_test, window_size=3)
-            print(f"Moving Average Predictions: {preds}")
+            #print(f"Moving Average Predictions: {preds}")
             preds = pd.Series(preds, index=ma_y_test.index)
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='Moving Average', line=dict(color='red')))
 
@@ -170,12 +173,12 @@ def update_metrics_chart(models_selected):
             metrics['MAPE'].append(model_metrics['MAPE'])
 
     
-    # Debug output to track what is happening
-    print("Metrics before plotting:")
-    print("Model Names:", model_names)
-    print("Bias Values:", metrics['Bias'])
-    print("Accuracy Values:", metrics['Accuracy'])
-    print("MAPE Values:", metrics['MAPE'])
+    # # Debug output to track what is happening
+    # print("Metrics before plotting:")
+    # print("Model Names:", model_names)
+    # print("Bias Values:", metrics['Bias'])
+    # print("Accuracy Values:", metrics['Accuracy'])
+    # print("MAPE Values:", metrics['MAPE'])
 
 
     # keep the Debug: Convert NaNs to 0 and ensure all values are floats
@@ -197,10 +200,13 @@ def update_metrics_chart(models_selected):
         xaxis_showgrid=False,
         yaxis_showgrid=False,
         bargap=0.15,  # Increase space between bars
-        bargroupgap=0.1  # Increase space between groups
+        bargroupgap=0.3  # Increase space between groups
     )
 
     return metrics_fig
+
+
+
 
 
 

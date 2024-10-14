@@ -12,7 +12,7 @@ def render_tab3():
         html.H2("Model Performance", style={'textAlign': 'left', 'fontSize': '28px'}),
 
         # Instruction line for dropdown (model selection)
-        html.P("Select the models you would like to evaluate:", style={
+        html.P("Select the models you would like to evaluate", style={
             'textAlign': 'left', 
             'fontSize': '16px', 
             'marginTop': '10px', 
@@ -45,7 +45,7 @@ def render_tab3():
         html.H2("Model Performance Metrics", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '50px'}),
 
         # Instruction line for dropdown (metrics selection)
-        html.P("Select the models for which you want to analyze performance metrics:", style={
+        html.P("Select the models for which you want to analyze performance metrics", style={
             'textAlign': 'left', 
             'fontSize': '16px', 
             'marginTop': '10px', 
@@ -94,6 +94,38 @@ def render_tab3():
                 html.H3("LightGBM Model", style={'textAlign': 'left', 'fontSize': '20px', 'marginRight': '20px'}),
                 html.Img(src='/assets/shap_summary_lightgbm.png', style={'height':'60%', 'width':'60%', 'display': 'block', 'marginLeft': '4cm'}),
             ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flex-start'}),
-        ], style={'marginTop': '50px'})
+        ], style={'marginTop': '50px'}),
+
+
+        # Feature Importance Section
+        html.H2("Feature Importance Analysis", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '50px'}),
+
+        # Instruction line for dropdown (model selection)
+        html.P("Select the models you would like to evaluate the feature importance", style={
+            'textAlign': 'left', 
+            'fontSize': '16px', 
+            'marginTop': '10px', 
+            'marginBottom': '15px'  # Increase space between text and dropdown
+        }),
+
+        # Dropdown for feature importance selection (XGBoost, LightGBM)
+        dcc.Dropdown(
+            id='feature-importance-dropdown',
+            options=[
+                {'label': 'XGBoost', 'value': 'xgboost'},
+                {'label': 'LightGBM', 'value': 'lightgbm'}
+            ],
+            value='xgboost',  # Default to XGBoost
+            style={
+                'width': '500px',  # Make the dropdown smaller
+                'display': 'inline-block',  # Align inline
+                'marginTop': '20px',  # Add space above dropdown
+                'marginLeft': '-10cm',  # Align left
+                'marginBottom': '15px'  # Increase space below dropdown
+            }
+        ),
+
+        # Bar chart for feature importance
+        dcc.Graph(id='feature-importance-bar-chart'),
 
     ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})

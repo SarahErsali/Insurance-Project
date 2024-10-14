@@ -7,7 +7,7 @@ from lightgbm import LGBMRegressor
 import statsmodels.api as sm
 from sklearn.metrics import (mean_squared_error, mean_absolute_error, r2_score, mean_absolute_percentage_error)
 import shap
-from components.data import X_train, y_train, X_val, y_val, X_blind_test, y_blind_test, property_data_model
+from components.data import X_train, y_train, X_val, y_val, X_blind_test, y_blind_test, property_data_model, property_data_feature_selected
 import matplotlib
 matplotlib.use('Agg')  # Switch to a non-interactive backend
 import matplotlib.pyplot as plt
@@ -385,6 +385,78 @@ def generate_shap_plot_lightgbm(X_combined, y_combined, X_blind_test):
 # Generate SHAP plots by calling the functions
 generate_shap_plot_xgboost(X_combined, y_combined, X_blind_test)
 generate_shap_plot_lightgbm(X_combined, y_combined, X_blind_test)
+
+#-------------------------------------------------------------------------------------
+
+
+# Function to get XGBoost feature importance
+def get_xgboost_feature_importance(X_combined, y_combined):
+    re_xgb_model = XGBRegressor(**xgb_best_params)
+    re_xgb_model.fit(X_combined, y_combined)
+    
+    # Get feature importance and return as a DataFrame
+    re_feature_importance_xgb = pd.DataFrame({
+        'Feature': X_combined.columns,
+        'Importance': re_xgb_model.feature_importances_
+    })
+
+    re_feature_importance_xgb = re_feature_importance_xgb.sort_values(by='Importance', ascending=False)
+    return re_feature_importance_xgb
+
+# Function to get LightGBM feature importance
+def get_lightgbm_feature_importance(X_combined, y_combined):
+    re_lgb_model = LGBMRegressor(**lgb_best_params)
+    re_lgb_model.fit(X_combined, y_combined)
+    
+    # Get feature importance and return as a DataFrame
+    re_feature_importance_lgb = pd.DataFrame({
+        'Feature': X_combined.columns,
+        'Importance': re_lgb_model.feature_importances_
+    })
+
+    re_feature_importance_lgb = re_feature_importance_lgb.sort_values(by='Importance', ascending=False)
+    return re_feature_importance_lgb
+
+
+#-------------------------------------------------------------------------------------
+
+
+# Storm periods definition
+storm_periods = {
+    'storm_event_1': {'start': '2020-06-15', 'end': '2020-09-13'},
+    'storm_event_2': {'start': '2022-07-20', 'end': '2022-09-02'},
+    'storm_event_3': {'start': '2023-05-08', 'end': '2023-07-30'}
+}
+
+# Function to filter storm periods
+def get_storm_periods(data, storm_periods):
+    storm_data = pd.DataFrame()
+    for storm in storm_periods.values():
+        mask = (data['Date'] >= storm['start']) & (data['Date'] <= storm['end'])
+        storm_data = pd.concat([storm_data, data[mask]])
+    return storm_data
+
+# Get storm period data
+storm_data = get_storm_periods(property_data_feature_selected, storm_periods)
+storm_X = storm_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
+storm_y = storm_data['Claims_Incurred']
+
+# Function to get XGBoost predictions for storm periods
+def get_xgboost_predictions_storm(X_combined, y_combined, storm_X):
+    re_xgb_model = XGBRegressor(**xgb_best_params)
+    re_xgb_model.fit(X_combined, y_combined)
+    #xgb_preds = re_xgb_model.predict(storm_data)
+    storm_xgb_preds = re_xgb_model.predict(storm_X)
+    return storm_xgb_preds
+
+# Function to get LightGBM predictions for storm periods
+def get_lightgbm_predictions_storm(X_combined, y_combined, storm_X):
+    re_lgb_model = LGBMRegressor(**lgb_best_params)
+    re_lgb_model.fit(X_combined, y_combined)
+    #lgb_preds = re_lgb_model.predict(storm_data)
+    storm_lgb_preds = re_lgb_model.predict(storm_X)    
+    return storm_lgb_preds
+
 
 
 # Export the variables

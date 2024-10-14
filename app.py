@@ -8,6 +8,7 @@ import shap
 from components.tabs.tab2 import render_tab2
 from components.tabs.tab1 import render_tab1
 from components.tabs.tab3 import render_tab3
+from components.tabs.tab4 import render_tab4
 from components.data import X_combined, y_combined, X_blind_test, y_blind_test
 from components.model_functions import (
     get_xgboost_predictions,
@@ -18,6 +19,14 @@ from components.model_functions import (
     arima_test_data,
     ma_y_test,
     arima_train_data,
+    get_xgboost_feature_importance,
+    get_lightgbm_feature_importance,
+    get_storm_periods,
+    get_xgboost_predictions_storm,
+    get_lightgbm_predictions_storm,
+    property_data_model,
+    storm_periods,
+    storm_X
 )
 
 
@@ -71,11 +80,7 @@ def render_content(tab):
         return render_tab3()
     
     elif tab == 'tab-4':
-        return html.Div([
-            html.H2("Model Robustness", style={'textAlign': 'center'}),
-            html.P("This section will showcase the results of stress testing.", style={'textAlign': 'center'}),
-        ])
-
+        return render_tab4()
 
     
 
@@ -205,6 +210,72 @@ def update_metrics_chart(models_selected):
 
     return metrics_fig
 
+
+
+
+# Callback for Feature Importance Bar Chart
+@app.callback(
+    Output('feature-importance-bar-chart', 'figure'),
+    Input('feature-importance-dropdown', 'value')
+)
+def update_feature_importance_chart(selected_model):
+    if selected_model == 'xgboost':
+        feature_importance_df = get_xgboost_feature_importance(X_combined, y_combined)
+    elif selected_model == 'lightgbm':
+        feature_importance_df = get_lightgbm_feature_importance(X_combined, y_combined)
+
+    # Create bar chart
+    fig = go.Figure([go.Bar(
+        x=feature_importance_df['Feature'],
+        y=feature_importance_df['Importance'],
+        marker_color='orange' if selected_model == 'xgboost' else 'blue'
+    )])
+
+    fig.update_layout(
+        #title=f'{selected_model.capitalize()} Feature Importance',
+        xaxis_title='Features',
+        yaxis_title='Importance',
+        xaxis_tickangle=-45,  # Rotate x-axis labels if necessary
+        height=500,
+        xaxis_showgrid=False,  # Remove grid lines from the x-axis
+        yaxis_showgrid=False,  # Remove grid lines from the y-axis
+        xaxis={'zeroline': False},  # Remove zero line on x-axis
+        yaxis={'zeroline': False}   # Remove zero line on y-axis
+    )
+
+    return fig
+
+# Callback for Stress Testing  Bar Chart
+@app.callback(
+    Output('storm-testing-graph', 'figure'),
+    Input('model-dropdown-storm', 'value')
+)
+def update_storm_testing(models_selected):
+    # Filter storm data
+    storm_data = get_storm_periods(property_data_model, storm_periods)
+    
+    fig = go.Figure()
+
+    # Fetch predictions for each selected model during storm periods
+    for model in models_selected:
+        if model == 'xgboost':            
+            xgb_preds_storm = get_xgboost_predictions_storm(X_combined, y_combined, storm_X)
+            
+            if len(xgb_preds_storm) > 0:
+                fig.add_trace(go.Scatter(x=storm_data['Date'], y=xgb_preds_storm, mode='lines', name='XGBoost (Storm)', line=dict(color='purple')))
+
+        if model == 'lightgbm':            
+            lgb_preds_storm = get_lightgbm_predictions_storm(X_combined, y_combined, storm_X)
+            
+            if len(lgb_preds_storm) > 0:
+                fig.add_trace(go.Scatter(x=storm_data['Date'], y=lgb_preds_storm, mode='lines', name='LightGBM (Storm)', line=dict(color='blue')))
+
+    # Add actual values during the storm periods
+    fig.add_trace(go.Scatter(x=storm_data['Date'], y=storm_data['Claims_Incurred'], mode='lines', name='Actual (Storm)', line=dict(color='black', dash='dot')))
+
+    fig.update_layout(xaxis_title='Date', yaxis_title='Claims Incurred During Storms', xaxis_showgrid=False, yaxis_showgrid=False)
+
+    return fig
 
 
 

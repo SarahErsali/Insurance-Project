@@ -584,4 +584,4 @@ X_combined = pd.concat([X_train, X_val], ignore_index=True)
 y_combined = pd.concat([y_train, y_val], ignore_index=True)
 
 # Export the variables
-__all__ = ['X_train', 'y_train', 'X_val', 'y_val', 'X_combined', 'y_combined', 'X_blind_test', 'y_blind_test']
+__all__ = ['X_train', 'y_train', 'X_val', 'y_val', 'X_combined', 'y_combined', 'X_blind_test', 'y_blind_test', 'property_data_feature_selected']

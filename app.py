@@ -9,7 +9,7 @@ from components.tabs.tab2 import render_tab2
 from components.tabs.tab1 import render_tab1
 from components.tabs.tab3 import render_tab3
 from components.tabs.tab4 import render_tab4
-from components.data import X_combined, y_combined, X_blind_test, y_blind_test
+from components.data import X_combined, y_combined, X_blind_test, y_blind_test, property_data_feature_selected
 from components.model_functions import (
     get_xgboost_predictions,
     get_lightgbm_predictions,
@@ -21,12 +21,16 @@ from components.model_functions import (
     arima_train_data,
     get_xgboost_feature_importance,
     get_lightgbm_feature_importance,
-    get_storm_periods,
+    property_data_model,
     get_xgboost_predictions_storm,
     get_lightgbm_predictions_storm,
-    property_data_model,
-    storm_periods,
-    storm_X
+    get_arima_predictions_storm,
+    get_moving_average_predictions_storm,
+    ts_actual_y,
+    get_xgb_backtest_results,
+    get_lgb_backtest_results,
+    get_arima_backtest_results,
+    get_ma_backtest_results
 )
 
 
@@ -245,39 +249,194 @@ def update_feature_importance_chart(selected_model):
 
     return fig
 
-# Callback for Stress Testing  Bar Chart
+# Callback for Stress Testing Plot
 @app.callback(
     Output('storm-testing-graph', 'figure'),
     Input('model-dropdown-storm', 'value')
 )
 def update_storm_testing(models_selected):
-    # Filter storm data
-    storm_data = get_storm_periods(property_data_model, storm_periods)
-    
     fig = go.Figure()
 
-    # Fetch predictions for each selected model during storm periods
+    # Ensure the x-axis uses proper date values
+    actual_dates = property_data_model['Date']  # Assuming 'Date' column has the actual dates
+
+    # Fetch predictions for each selected model for the entire period
     for model in models_selected:
         if model == 'xgboost':            
-            xgb_preds_storm = get_xgboost_predictions_storm(X_combined, y_combined, storm_X)
+            xgb_preds_storm = get_xgboost_predictions_storm()
             
             if len(xgb_preds_storm) > 0:
-                fig.add_trace(go.Scatter(x=storm_data['Date'], y=xgb_preds_storm, mode='lines', name='XGBoost (Storm)', line=dict(color='purple')))
+                fig.add_trace(go.Scatter(
+                    x=actual_dates,  # Use actual dates for x-axis
+                    y=xgb_preds_storm, 
+                    mode='lines', 
+                    name='XGBoost', 
+                    line=dict(color='purple')
+                ))
 
         if model == 'lightgbm':            
-            lgb_preds_storm = get_lightgbm_predictions_storm(X_combined, y_combined, storm_X)
+            lgb_preds_storm = get_lightgbm_predictions_storm()
             
             if len(lgb_preds_storm) > 0:
-                fig.add_trace(go.Scatter(x=storm_data['Date'], y=lgb_preds_storm, mode='lines', name='LightGBM (Storm)', line=dict(color='blue')))
+                fig.add_trace(go.Scatter(
+                    x=actual_dates,  # Use actual dates for x-axis
+                    y=lgb_preds_storm, 
+                    mode='lines', 
+                    name='LightGBM', 
+                    line=dict(color='blue')
+                ))
 
-    # Add actual values during the storm periods
-    fig.add_trace(go.Scatter(x=storm_data['Date'], y=storm_data['Claims_Incurred'], mode='lines', name='Actual (Storm)', line=dict(color='black', dash='dot')))
+        if model == 'arima':            
+            arima_preds_storm = get_arima_predictions_storm()
+            
+            if len(arima_preds_storm) > 0:
+                fig.add_trace(go.Scatter(
+                    x=actual_dates,  # Use actual dates for x-axis
+                    y=arima_preds_storm, 
+                    mode='lines', 
+                    name='ARIMA', 
+                    line=dict(color='green')
+                ))
 
-    fig.update_layout(xaxis_title='Date', yaxis_title='Claims Incurred During Storms', xaxis_showgrid=False, yaxis_showgrid=False)
+        if model == 'moving_average':            
+            ma_preds_storm = get_moving_average_predictions_storm()
+            
+            if len(ma_preds_storm) > 0:
+                fig.add_trace(go.Scatter(
+                    x=actual_dates,  # Use actual dates for x-axis
+                    y=ma_preds_storm, 
+                    mode='lines', 
+                    name='Moving Average', 
+                    line=dict(color='red')
+                ))
+
+    # Add actual values across the period
+    fig.add_trace(go.Scatter(
+        x=actual_dates,  # Use actual dates for x-axis
+        y=ts_actual_y, 
+        mode='lines', 
+        name='Actual', 
+        line=dict(color='black', dash='dot')
+    ))
+
+    fig.update_layout(
+        xaxis_title='Date', 
+        yaxis_title='Claims Incurred During Storms', 
+        xaxis_showgrid=False, 
+        yaxis_showgrid=False,
+        xaxis=dict(type='date')  # Ensure the x-axis is treated as dates
+    )
 
     return fig
 
 
+# Callback for Backtesting Results (Three Bar Charts)
+@app.callback(
+    [Output('backtest-bias-chart', 'figure'),
+     Output('backtest-accuracy-chart', 'figure'),
+     Output('backtest-mape-chart', 'figure')],
+    Input('model-dropdown-backtest', 'value')
+)
+def update_backtest_charts(models_selected):
+    # Initialize data structures for metrics
+    metrics = {'bias': {}, 'accuracy': {}, 'mape': {}}
+
+    # # Check for NaNs before running backtesting
+    # print("Checking for NaNs in data:")
+    # print(property_data_feature_selected.isnull().sum())  # Check for NaNs in the feature data
+    # print(property_data_model.isnull().sum())  # Check for NaNs in the model data
+
+    # Retrieve backtest results for each selected model
+    for model in models_selected:
+        if model == 'xgboost':
+            # # Debugging: Check the shape of the data used for XGBoost backtesting
+            # print("XGBoost backtesting with the following data:")
+            # print(property_data_feature_selected.head())
+
+            xgb_results = get_xgb_backtest_results(property_data_feature_selected)
+            
+            # # Debugging: Print the XGBoost backtest results
+            # print("XGBoost Backtest Results:")
+            # print(xgb_results)
+
+            metrics['bias']['XGBoost'] = xgb_results.loc['mean', 'bias']
+            metrics['accuracy']['XGBoost'] = xgb_results.loc['mean', 'accuracy']
+            metrics['mape']['XGBoost'] = xgb_results.loc['mean', 'mape']
+        
+        elif model == 'lightgbm':
+            # # Debugging: Check the shape of the data used for LightGBM backtesting
+            # print("LightGBM backtesting with the following data:")
+            # print(property_data_feature_selected.head())
+
+            lgb_results = get_lgb_backtest_results(property_data_feature_selected)
+
+            # # Debugging: Print the LightGBM backtest results
+            # print("LightGBM Backtest Results:")
+            # print(lgb_results)
+
+            metrics['bias']['LightGBM'] = lgb_results.loc['mean', 'bias']
+            metrics['accuracy']['LightGBM'] = lgb_results.loc['mean', 'accuracy']
+            metrics['mape']['LightGBM'] = lgb_results.loc['mean', 'mape']
+
+        elif model == 'arima':
+            # # Debugging: Check the shape of the data used for ARIMA backtesting
+            # print("ARIMA backtesting with the following data:")
+            # print(property_data_model[['Date', 'Claims_Incurred']].head())
+
+            arima_results = get_arima_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
+            
+            # # Debugging: Print the ARIMA backtest results and the bias values
+            # print("ARIMA Backtest Results:")
+            # print(arima_results)
+
+            metrics['bias']['ARIMA'] = arima_results.loc['mean', 'bias']
+            metrics['accuracy']['ARIMA'] = arima_results.loc['mean', 'accuracy']
+            metrics['mape']['ARIMA'] = arima_results.loc['mean', 'mape']
+        
+        elif model == 'moving_average':
+            # # Debugging: Check the shape of the data used for Moving Average backtesting
+            # print("Moving Average backtesting with the following data:")
+            # print(property_data_model[['Date', 'Claims_Incurred']].head())
+
+            ma_results = get_ma_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
+
+            # # Debugging: Print the Moving Average backtest results
+            # print("Moving Average Backtest Results:")
+            # print(ma_results)
+
+            metrics['bias']['Moving Average'] = ma_results.loc['mean', 'bias']
+            metrics['accuracy']['Moving Average'] = ma_results.loc['mean', 'accuracy']
+            metrics['mape']['Moving Average'] = ma_results.loc['mean', 'mape']
+
+    # Generate bar charts for each metric
+    bias_fig = go.Figure([go.Bar(x=list(metrics['bias'].keys()), y=list(metrics['bias'].values()), name='Bias')])
+    accuracy_fig = go.Figure([go.Bar(x=list(metrics['accuracy'].keys()), y=list(metrics['accuracy'].values()), name='Accuracy')])
+    mape_fig = go.Figure([go.Bar(x=list(metrics['mape'].keys()), y=list(metrics['mape'].values()), name='MAPE')])
+
+    # Update layout for better visuals
+    bias_fig.update_layout(
+        xaxis_title='Models',
+        yaxis_title='Bias',
+        yaxis=dict(showgrid=False),
+        bargap=0.15,
+        bargroupgap=0.2
+    )
+    accuracy_fig.update_layout(
+        xaxis_title='Models',
+        yaxis_title='Accuracy',
+        yaxis=dict(showgrid=False, range=[0, 100]),
+        bargap=0.15,
+        bargroupgap=0.2
+    )
+    mape_fig.update_layout(
+        xaxis_title='Models',
+        yaxis_title='MAPE',
+        yaxis=dict(showgrid=False),
+        bargap=0.15,
+        bargroupgap=0.2
+    )
+
+    return bias_fig, accuracy_fig, mape_fig
 
 
 

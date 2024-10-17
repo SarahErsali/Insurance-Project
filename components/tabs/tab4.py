@@ -40,20 +40,64 @@ def render_tab4():
             'marginBottom': '15px'
         }),
 
-        # Dropdown for storm testing
+        # Dropdown for model selection
         dcc.Dropdown(
             id='model-dropdown-storm',
             options=[
                 {'label': 'XGBoost', 'value': 'xgboost'},
                 {'label': 'LightGBM', 'value': 'lightgbm'},
+                {'label': 'ARIMA', 'value': 'arima'},
+                {'label': 'Moving Average', 'value': 'moving_average'}
             ],
             value=['xgboost'],  # Default value
             multi=True,  # Allow selecting multiple models
             style={'width': '500px', 'display': 'inline-block', 'marginLeft': '-10cm'}
         ),
 
-        # Graph to show storm testing results
+        # Graph to show testing results
         dcc.Graph(id='storm-testing-graph'),
 
-    ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})
+        # Section for Backtesting
+        html.H2("Backtesting Results", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '4cm'}),
+        
+        # Instruction for dropdown
+        html.P("Select the models you want to see backtesting results for", style={
+            'textAlign': 'left', 
+            'fontSize': '16px', 
+            'marginTop': '10px', 
+            'marginBottom': '15px'
+        }),
 
+        # Dropdown for backtesting model selection
+        dcc.Dropdown(
+            id='model-dropdown-backtest',
+            options=[
+                {'label': 'XGBoost', 'value': 'xgboost'},
+                {'label': 'LightGBM', 'value': 'lightgbm'},
+                {'label': 'ARIMA', 'value': 'arima'},
+                {'label': 'Moving Average', 'value': 'moving_average'}
+            ],
+            value=['xgboost'],  # Default value
+            multi=True,  # Allow selecting multiple models
+            style={'width': '500px', 'display': 'inline-block', 'marginLeft': '-10cm'}
+        ),
+
+        # Bias Bar Chart
+        html.Div([
+            html.H3("Bias Comparison", style={'textAlign': 'center', 'fontSize': '20px'}),
+            dcc.Graph(id='backtest-bias-chart')
+        ], style={'marginTop': '20px'}),
+
+        # Accuracy Bar Chart
+        html.Div([
+            html.H3("Accuracy Comparison", style={'textAlign': 'center', 'fontSize': '20px'}),
+            dcc.Graph(id='backtest-accuracy-chart')
+        ], style={'marginTop': '20px'}),
+
+        # MAPE Bar Chart
+        html.Div([
+            html.H3("MAPE Comparison", style={'textAlign': 'center', 'fontSize': '20px'}),
+            dcc.Graph(id='backtest-mape-chart')
+        ], style={'marginTop': '20px'}),
+
+    ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})

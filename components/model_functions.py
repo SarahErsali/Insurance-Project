@@ -85,16 +85,6 @@ import os
 
 
 
-# plt.plot(y_blind_test.values, label='Actual Values (Blind Test)', marker='o', linestyle='-', alpha=0.6)
-# plt.plot(xgb_blind_test_preds, label='XGBoost Predictions (Blind Test)', marker='x', linestyle='--', alpha=0.6)
-# plt.plot(lgb_blind_test_preds, label='LightGBM Predictions (Blind Test)', marker='s', linestyle='--', alpha=0.6)
-
-# plt.title('Actual vs model predictions on validation and blind test sets')
-# plt.xlabel('Observations')
-# plt.ylabel('Claims Incurred')
-# plt.legend()
-
-# plt.tight_layout()
 
 
 
@@ -151,35 +141,6 @@ re_lgb_model.fit(X_combined, y_combined)
 # re_lgb_blind_test_accuracy = 100 - re_lgb_blind_test_mape
 
 
-# # Initialize the SHAP explainer for retrained  XGBoost
-# explainer_re_xgb = shap.Explainer(re_xgb_model, X_blind_test)
-# shap_values_re_xgb = explainer_re_xgb(X_blind_test)
-
-# # Initialize the SHAP explainer for retrained LightGBM
-# explainer_re_lgb = shap.Explainer(re_lgb_model, X_blind_test)
-# shap_values_re_lgb = explainer_re_lgb(X_blind_test)
-
-# shap.summary_plot(shap_values_re_xgb, X_blind_test, plot_type="bar")  
-# shap.summary_plot(shap_values_re_xgb, X_blind_test)
-
-# shap.summary_plot(shap_values_re_lgb, X_blind_test, plot_type="bar")  
-# shap.summary_plot(shap_values_re_lgb, X_blind_test)
-
-
-# plt.figure(figsize=(12, 6))
-
-
-# plt.plot(y_blind_test.values, label='Actual Values (Blind Test)', color='green', marker='o', linestyle='-', alpha=0.6)
-# plt.plot(xgb_blind_test_preds, label='XGBoost Predictions (Blind Test)', color='orange', marker='x', linestyle='--', alpha=0.6)
-# plt.plot(lgb_blind_test_preds, label='LightGBM Predictions (Blind Test)', color='blue', marker='s', linestyle='--', alpha=0.6)
-
-# plt.title('Actual vs model predictions on blind test sets')
-# plt.xlabel('Observations')
-# plt.ylabel('Claims Incurred')
-# plt.legend()
-
-# plt.tight_layout()
-
 # Define a separate dataset for the ARIMA model
 arima_data = property_data_model.copy()
 
@@ -221,24 +182,6 @@ best_seasonal_pdq = (1, 1, 1, 12)  # Seasonal order
 # # Forecast 24 months AHEAD
 # future_arima_forecast = final_arima_model_fit.forecast(steps=24)
 
-# arima_mse = mean_squared_error(arima_y_test, arima_forecast)
-# arima_rmse = np.sqrt(arima_mse)
-# arima_mae = mean_absolute_error(arima_y_test, arima_forecast)
-# arima_mape = mean_absolute_percentage_error(arima_y_test, arima_forecast) * 100  
-# arima_r2 = r2_score(arima_y_test, arima_forecast)
-# arima_bias = np.mean(arima_forecast - arima_y_test)  
-# arima_accuracy = 100 - arima_mape
-
-
-# plt.figure(figsize=(12, 6))
-# plt.plot(arima_y_train.index, arima_y_train, label='Train')
-# plt.plot(arima_y_test.index, arima_y_test, label='Test')
-# plt.plot(arima_forecast.index, arima_forecast, label='ARIMA Forecast', color='black')
-# plt.plot(pd.date_range(start=arima_y_test.index[-1], periods=24, freq='ME'), future_arima_forecast, label='Future Forecast', color='green')
-# plt.xlabel('Date')
-# plt.ylabel('Claims Incurred')
-# plt.title('ARIMA forecast')
-# plt.legend();
 
 
 ma_data = property_data_model.copy()
@@ -254,34 +197,6 @@ ma_test_data = ma_data[(ma_data['Date'].dt.year >= 2023) & (ma_data['Date'].dt.y
 # ma_y_train = ma_train_data['Claims_Incurred']
 ma_y_test = ma_test_data['Claims_Incurred']
 
-# window_size = 3
-
-
-# # Shift series to align predictions with actuals
-# ma_train = ma_y_train.rolling(window=window_size).mean().shift(1)
-# ma_test = ma_y_test.rolling(window=window_size).mean().shift(1)
-
-# # Fill any NaN values generated at the beginning of the series
-# ma_train.fillna(ma_y_train.mean(), inplace=True)
-# ma_test.fillna(ma_y_test.mean(), inplace=True)
-
-# ma_mse = mean_squared_error(ma_y_test, ma_test)
-# ma_rmse = np.sqrt(ma_mse)
-# ma_mae = mean_absolute_error(ma_y_test, ma_test)
-# ma_mape = mean_absolute_percentage_error(ma_y_test, ma_test) * 100
-# ma_r2 = r2_score(ma_y_test, ma_test)
-# ma_bias = np.mean(ma_test - ma_y_test)
-# ma_accuracy = 100 - ma_mape
-
-
-# plt.figure(figsize=(13, 6))
-# plt.plot(ma_y_train.index, ma_y_train, label='Train', color='blue')
-# plt.plot(ma_y_test.index, ma_y_test, label='Test', color='orange')
-# plt.plot(ma_y_test.index, ma_test, label=f'Moving Average (Window size {window_size})', color='green')
-# plt.xlabel('Date')
-# plt.ylabel('Claims Incurred')
-# plt.title(f'Moving average (Window size {window_size}) vs actual claims')
-# plt.legend()
 
 #-------------------------------------------------------------------------------------
 
@@ -332,7 +247,7 @@ def get_moving_average_predictions(ma_y_test, window_size):
     return ma_y_test.rolling(window=window_size).mean().shift(1).fillna(ma_y_test.mean())
 
 
-#-------------------------------------------------------------------------------------
+#----------- performance metrics ----------------------
 
 
 # Function to get performance metrics
@@ -353,7 +268,8 @@ def calculate_model_metrics(y_true, y_pred):
 
     return {'Bias': bias, 'MAPE': mape, 'Accuracy': accuracy}
 
-#-------------------------------------------------------------------------------------
+#----------- SHAP ------------------
+
 # Ensure your project root and assets folder is correctly targeted
 assets_folder_path = os.path.join(os.getcwd(), 'assets')
 
@@ -386,7 +302,7 @@ def generate_shap_plot_lightgbm(X_combined, y_combined, X_blind_test):
 generate_shap_plot_xgboost(X_combined, y_combined, X_blind_test)
 generate_shap_plot_lightgbm(X_combined, y_combined, X_blind_test)
 
-#-------------------------------------------------------------------------------------
+#-------- feature importance ------------
 
 
 # Function to get XGBoost feature importance
@@ -418,44 +334,112 @@ def get_lightgbm_feature_importance(X_combined, y_combined):
     return re_feature_importance_lgb
 
 
-#-------------------------------------------------------------------------------------
+#------------- Stress Testing ---------------
 
 
-# Storm periods definition
-storm_periods = {
-    'storm_event_1': {'start': '2020-06-15', 'end': '2020-09-13'},
-    'storm_event_2': {'start': '2022-07-20', 'end': '2022-09-02'},
-    'storm_event_3': {'start': '2023-05-08', 'end': '2023-07-30'}
-}
+window_size = 3
 
-# Function to filter storm periods
-def get_storm_periods(data, storm_periods):
-    storm_data = pd.DataFrame()
-    for storm in storm_periods.values():
-        mask = (data['Date'] >= storm['start']) & (data['Date'] <= storm['end'])
-        storm_data = pd.concat([storm_data, data[mask]])
-    return storm_data
+# Prepare data for stress testing
+property_data_feature_selected_s = property_data_feature_selected.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
+property_data_model_s = property_data_model.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
 
-# Get storm period data
-storm_data = get_storm_periods(property_data_feature_selected, storm_periods)
-storm_X = storm_data.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
-storm_y = storm_data['Claims_Incurred']
+# Actual data for ML and ts models
+ml_actual_y = property_data_feature_selected['Claims_Incurred']
+ts_actual_y = property_data_model['Claims_Incurred']
 
 # Function to get XGBoost predictions for storm periods
-def get_xgboost_predictions_storm(X_combined, y_combined, storm_X):
-    re_xgb_model = XGBRegressor(**xgb_best_params)
-    re_xgb_model.fit(X_combined, y_combined)
-    #xgb_preds = re_xgb_model.predict(storm_data)
-    storm_xgb_preds = re_xgb_model.predict(storm_X)
-    return storm_xgb_preds
+def get_xgboost_predictions_storm():
+    return re_xgb_model.predict(property_data_feature_selected_s)
 
 # Function to get LightGBM predictions for storm periods
-def get_lightgbm_predictions_storm(X_combined, y_combined, storm_X):
-    re_lgb_model = LGBMRegressor(**lgb_best_params)
-    re_lgb_model.fit(X_combined, y_combined)
-    #lgb_preds = re_lgb_model.predict(storm_data)
-    storm_lgb_preds = re_lgb_model.predict(storm_X)    
-    return storm_lgb_preds
+def get_lightgbm_predictions_storm():
+    return re_lgb_model.predict(property_data_feature_selected_s)
+
+# Function to get ARIMA predictions for storm periods
+def get_arima_predictions_storm():
+    arima_y_train = arima_train_data['Claims_Incurred']
+    final_arima_model = sm.tsa.SARIMAX(arima_y_train, 
+                                       order=best_pdq, 
+                                       seasonal_order=best_seasonal_pdq,
+                                       enforce_stationarity=False,  
+                                       enforce_invertibility=False)
+    
+    final_arima_model_fit = final_arima_model.fit(disp=False, maxiter=1000, tol=1e-6)
+    return final_arima_model_fit.forecast(steps=len(property_data_model.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')))
+
+# Function to get Moving Average predictions for storm periods
+def get_moving_average_predictions_storm():
+    storm_ma_prediction = ts_actual_y.rolling(window=window_size).mean().shift(1)
+    storm_ma_prediction.fillna(ts_actual_y.mean(), inplace=True)
+    return storm_ma_prediction
+
+
+#------------- Back Testing ---------------
+
+# Parameters:
+#     - data: DataFrame containing the data to backtest.
+#     - model_type: String specifying the model ('xgb', 'lgb', 'arima', 'ma').
+#     - window: Integer specifying the size of the rolling window.
+
+#     Returns:
+#     - DataFrame with statistical summary of backtesting results.
+
+
+# Function to perform backtesting for models
+def backtest(data, model_type, window=24, test_size=12, num_cycles=3):
+    metrics = {'bias': [], 'accuracy': [], 'mape': []}
+
+    for i in range(num_cycles):
+        train, test = data.iloc[i:i + window], data.iloc[i + window:i + window + test_size]
+        b_X_train = train.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
+        b_y_train = train['Claims_Incurred']
+        b_X_test = test.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
+        b_y_test = test['Claims_Incurred']
+
+        if model_type == 'xgb':
+            preds = XGBRegressor().fit(b_X_train, b_y_train).predict(b_X_test)
+        elif model_type == 'lgb':
+            preds = LGBMRegressor().fit(b_X_train, b_y_train).predict(b_X_test)
+        elif model_type == 'arima':
+            # Fit and forecast the ARIMA model
+            arima_model = sm.tsa.SARIMAX(b_y_train, order=(3, 2, 3), seasonal_order=(1, 1, 1, 12))
+            arima_fitted = arima_model.fit(disp=False)
+            preds = arima_fitted.forecast(test_size)
+            
+            # # Debugging statements to check ARIMA predictions and lengths
+            # print(f"ARIMA Cycle {i}:")
+            # print(f"Train data length: {len(b_y_train)}, Test data length: {len(b_y_test)}")
+            # print(f"Predictions: {preds}")
+            
+        elif model_type == 'ma':
+            preds = [b_y_train.rolling(window=3).mean().iloc[-1]] * test_size
+
+        # # Debugging statement to compare lengths of predictions and actuals
+        # print(f"Cycle {i} | Model: {model_type} | Predictions Length: {len(preds)}, Actual Length: {len(b_y_test)}")
+
+        bias = np.mean(preds - b_y_test)
+        accuracy = 100 - (mean_absolute_percentage_error(b_y_test, preds) * 100)
+        mape = mean_absolute_percentage_error(b_y_test, preds) * 100
+
+        metrics['bias'].append(bias)
+        metrics['accuracy'].append(accuracy)
+        metrics['mape'].append(mape)
+
+    return pd.DataFrame(metrics).describe()
+
+
+
+def get_xgb_backtest_results(data):
+    return backtest(data, 'xgb', window=66, test_size=12, num_cycles=3)
+
+def get_lgb_backtest_results(data):
+    return backtest(data, 'lgb', window=66, test_size=12, num_cycles=3)
+
+def get_arima_backtest_results(data):
+    return backtest(data, 'arima', window=66, test_size=12, num_cycles=3)
+
+def get_ma_backtest_results(data):
+    return backtest(data, 'ma', window=66, test_size=12, num_cycles=3)
 
 
 

@@ -4,11 +4,12 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
-import shap
+from components.tabs.home_tab import render_home_tab
 from components.tabs.tab2 import render_tab2
 from components.tabs.tab1 import render_tab1
 from components.tabs.tab3 import render_tab3
 from components.tabs.tab4 import render_tab4
+from components.tabs.tab5 import render_tab5
 from components.data import X_combined, y_combined, X_blind_test, y_blind_test, property_data_feature_selected
 from components.model_functions import (
     get_xgboost_predictions,
@@ -34,15 +35,15 @@ from components.model_functions import (
 )
 
 
-# Initialize the app
+#--------------------- Initialize the app---------------------
+
+
 app = dash.Dash(__name__)
 
-# Set the app title
 app.title = "Insurance Consultant Service"
 
 # Define the layout of the app
 app.layout = html.Div([
-    # Header with company name
     html.Header([
         html.H1("Welcome to BaNex Consulting", style={'textAlign': 'center', 'fontSize': '48px', 'marginTop': '10px'}),
     ], style={'backgroundColor': '#f0f0f0', 'padding': '50px'}),
@@ -54,25 +55,24 @@ app.layout = html.Div([
         dcc.Tab(label='Exploratory Data Analysis', value='tab-2'),
         dcc.Tab(label='Model Performance', value='tab-3'),
         dcc.Tab(label='Model Robustness', value='tab-4'),
+        dcc.Tab(label='Solution', value='tab-5'),
     ]),
 
     # Content section that changes with each tab
     html.Div(id='tabs-content', style={'textAlign': 'center', 'padding': '0px', 'height': '50vh'})
 ])
 
-# Callback to update the page content based on the selected tab
+#----------- Callback to update the page content based on the selected tab ------------------
+
+
 @app.callback(
     Output('tabs-content', 'children'),
     Input('tabs-example', 'value')
 )
 def render_content(tab):
+
     if tab == 'home':
-        return html.Div([
-            html.P("At BaNex Consulting, we empower the insurance industry to excel in today’s fast-paced world through cutting-edge, data-driven solutions that drive innovation, efficiency, and growth.",
-                   style={'textAlign': 'center', 'fontSize': '28px', 'marginTop': '2vh', 'lineHeight': '1.9',
-                          'maxWidth': '80%', 'marginLeft': 'auto', 'marginRight': 'auto', 'paddingLeft': '3cm',
-                          'paddingRight': '3cm'}),
-        ], style={'display': 'flex', 'flexDirection': 'column', 'justifyContent': 'center', 'alignItems': 'center', 'height': '60vh'})
+        return render_home_tab()
 
     elif tab == 'tab-1':
         return render_tab1()
@@ -85,6 +85,9 @@ def render_content(tab):
     
     elif tab == 'tab-4':
         return render_tab4()
+    
+    elif tab == 'tab-5':
+        return render_tab5()
 
     
 
@@ -98,29 +101,24 @@ def render_content(tab):
 def update_model_predictions(models_selected):
     fig = go.Figure()
 
-    # Fetch predictions for each selected model
     for model in models_selected:
         if model == 'xgboost':
             preds = get_xgboost_predictions(X_combined, y_combined, X_blind_test)
-            #print(f"XGBoost Predictions: {preds}")
             preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='XGBoost', line=dict(color='purple')))
 
         if model == 'lightgbm':
             preds = get_lightgbm_predictions(X_combined, y_combined, X_blind_test)
-            #print(f"LightGBM Predictions: {preds}")
             preds = pd.Series(preds, index=y_blind_test.reset_index(drop=True))
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='LightGBM', line=dict(color='blue')))
 
         if model == 'arima':
             preds = get_arima_predictions(arima_train_data, arima_test_data, (3, 2, 3), (1, 1, 1, 12))
-            #print(f"ARIMA Predictions: {preds}")
             preds = pd.Series(preds, index=arima_test_data.index)
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='ARIMA', line=dict(color='green')))
 
         if model == 'moving_average':
             preds = get_moving_average_predictions(ma_y_test, window_size=3)
-            #print(f"Moving Average Predictions: {preds}")
             preds = pd.Series(preds, index=ma_y_test.index)
             fig.add_trace(go.Scatter(x=y_blind_test.index, y=preds, mode='lines', name='Moving Average', line=dict(color='red')))
 
@@ -185,25 +183,17 @@ def update_metrics_chart(models_selected):
             metrics['MAPE'].append(model_metrics['MAPE'])
 
     
-    # # Debug output to track what is happening
-    # print("Metrics before plotting:")
-    # print("Model Names:", model_names)
-    # print("Bias Values:", metrics['Bias'])
-    # print("Accuracy Values:", metrics['Accuracy'])
-    # print("MAPE Values:", metrics['MAPE'])
-
-
-    # keep the Debug: Convert NaNs to 0 and ensure all values are floats
+    # Convert NaNs to 0 and ensure all values are floats
     for key in metrics:
         metrics[key] = [0.0 if np.isnan(value) else float(value) for value in metrics[key]]
     
 
-# Create vertical bar charts for each metric
+    # Create bar charts for each metric
     bias_fig = go.Figure([go.Bar(x=model_names, y=metrics['Bias'], name='Bias', marker_color='orange')])
     accuracy_fig = go.Figure([go.Bar(x=model_names, y=metrics['Accuracy'], name='Accuracy', marker_color='green')])
     mape_fig = go.Figure([go.Bar(x=model_names, y=metrics['MAPE'], name='MAPE', marker_color='blue')])
 
-    # Update layout for each chart
+    # Layout for each chart
     bias_fig.update_layout(
         xaxis_title='Models', 
         yaxis_title='Bias', 
@@ -231,13 +221,14 @@ def update_metrics_chart(models_selected):
 
 #------------- Callback for Feature Importance Bar Chart -------------------
 
+
+
 @app.callback(
     [Output('xgboost-feature-importance-bar-chart', 'figure'),
      Output('lightgbm-feature-importance-bar-chart', 'figure')],
-    Input('tabs-example', 'value')  # Listen to tab switch event, or you can use another Input if needed
+    Input('tabs-example', 'value')
 )
 def update_feature_importance_chart(_):
-    # Create the XGBoost Feature Importance Bar Chart
     feature_importance_df_xgboost = get_xgboost_feature_importance(X_combined, y_combined)
     xgboost_fig = go.Figure([go.Bar(
         x=feature_importance_df_xgboost['Feature'],
@@ -256,7 +247,6 @@ def update_feature_importance_chart(_):
         yaxis={'zeroline': False}
     )
 
-    # Create the LightGBM Feature Importance Bar Chart
     feature_importance_df_lightgbm = get_lightgbm_feature_importance(X_combined, y_combined)
     lightgbm_fig = go.Figure([go.Bar(
         x=feature_importance_df_lightgbm['Feature'],
@@ -281,6 +271,8 @@ def update_feature_importance_chart(_):
 
 #---------- Callback for Stress Testing Plot -----------
 
+
+
 @app.callback(
     Output('storm-testing-graph', 'figure'),
     Input('model-dropdown-storm', 'value')
@@ -289,16 +281,15 @@ def update_storm_testing(models_selected):
     fig = go.Figure()
 
     # Ensure the x-axis uses proper date values
-    actual_dates = property_data_model['Date']  # Assuming 'Date' column has the actual dates
+    actual_dates = property_data_model['Date'] 
 
-    # Fetch predictions for each selected model for the entire period
     for model in models_selected:
         if model == 'xgboost':            
             xgb_preds_storm = get_xgboost_predictions_storm()
             
             if len(xgb_preds_storm) > 0:
                 fig.add_trace(go.Scatter(
-                    x=actual_dates,  # Use actual dates for x-axis
+                    x=actual_dates,  
                     y=xgb_preds_storm, 
                     mode='lines', 
                     name='XGBoost', 
@@ -310,7 +301,7 @@ def update_storm_testing(models_selected):
             
             if len(lgb_preds_storm) > 0:
                 fig.add_trace(go.Scatter(
-                    x=actual_dates,  # Use actual dates for x-axis
+                    x=actual_dates, 
                     y=lgb_preds_storm, 
                     mode='lines', 
                     name='LightGBM', 
@@ -322,7 +313,7 @@ def update_storm_testing(models_selected):
             
             if len(arima_preds_storm) > 0:
                 fig.add_trace(go.Scatter(
-                    x=actual_dates,  # Use actual dates for x-axis
+                    x=actual_dates,  
                     y=arima_preds_storm, 
                     mode='lines', 
                     name='ARIMA', 
@@ -334,7 +325,7 @@ def update_storm_testing(models_selected):
             
             if len(ma_preds_storm) > 0:
                 fig.add_trace(go.Scatter(
-                    x=actual_dates,  # Use actual dates for x-axis
+                    x=actual_dates,  
                     y=ma_preds_storm, 
                     mode='lines', 
                     name='Moving Average', 
@@ -343,7 +334,7 @@ def update_storm_testing(models_selected):
 
     # Add actual values across the period
     fig.add_trace(go.Scatter(
-        x=actual_dates,  # Use actual dates for x-axis
+        x=actual_dates,  
         y=ts_actual_y, 
         mode='lines', 
         name='Actual', 
@@ -371,71 +362,37 @@ def update_storm_testing(models_selected):
     Input('model-dropdown-backtest', 'value')
 )
 def update_backtest_charts(models_selected):
-    # Initialize data structures for metrics
     metrics = {'bias': {}, 'accuracy': {}, 'mape': {}}
 
-    # # Check for NaNs before running backtesting
-    # print("Checking for NaNs in data:")
-    # print(property_data_feature_selected.isnull().sum())  # Check for NaNs in the feature data
-    # print(property_data_model.isnull().sum())  # Check for NaNs in the model data
 
-    # Retrieve backtest results for each selected model
     for model in models_selected:
         if model == 'xgboost':
-            # # Debugging: Check the shape of the data used for XGBoost backtesting
-            # print("XGBoost backtesting with the following data:")
-            # print(property_data_feature_selected.head())
-
             xgb_results = get_xgb_backtest_results(property_data_feature_selected)
-            
-            # # Debugging: Print the XGBoost backtest results
-            # print("XGBoost Backtest Results:")
-            # print(xgb_results)
 
             metrics['bias']['XGBoost'] = xgb_results.loc['mean', 'bias']
             metrics['accuracy']['XGBoost'] = xgb_results.loc['mean', 'accuracy']
             metrics['mape']['XGBoost'] = xgb_results.loc['mean', 'mape']
         
         elif model == 'lightgbm':
-            # # Debugging: Check the shape of the data used for LightGBM backtesting
-            # print("LightGBM backtesting with the following data:")
-            # print(property_data_feature_selected.head())
-
+            
             lgb_results = get_lgb_backtest_results(property_data_feature_selected)
-
-            # # Debugging: Print the LightGBM backtest results
-            # print("LightGBM Backtest Results:")
-            # print(lgb_results)
 
             metrics['bias']['LightGBM'] = lgb_results.loc['mean', 'bias']
             metrics['accuracy']['LightGBM'] = lgb_results.loc['mean', 'accuracy']
             metrics['mape']['LightGBM'] = lgb_results.loc['mean', 'mape']
 
         elif model == 'arima':
-            # # Debugging: Check the shape of the data used for ARIMA backtesting
-            # print("ARIMA backtesting with the following data:")
-            # print(property_data_model[['Date', 'Claims_Incurred']].head())
-
-            arima_results = get_arima_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
             
-            # # Debugging: Print the ARIMA backtest results and the bias values
-            # print("ARIMA Backtest Results:")
-            # print(arima_results)
+            arima_results = get_arima_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
+          
 
             metrics['bias']['ARIMA'] = arima_results.loc['mean', 'bias']
             metrics['accuracy']['ARIMA'] = arima_results.loc['mean', 'accuracy']
             metrics['mape']['ARIMA'] = arima_results.loc['mean', 'mape']
         
         elif model == 'moving_average':
-            # # Debugging: Check the shape of the data used for Moving Average backtesting
-            # print("Moving Average backtesting with the following data:")
-            # print(property_data_model[['Date', 'Claims_Incurred']].head())
-
+            
             ma_results = get_ma_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
-
-            # # Debugging: Print the Moving Average backtest results
-            # print("Moving Average Backtest Results:")
-            # print(ma_results)
 
             metrics['bias']['Moving Average'] = ma_results.loc['mean', 'bias']
             metrics['accuracy']['Moving Average'] = ma_results.loc['mean', 'accuracy']
@@ -462,11 +419,8 @@ def update_backtest_charts(models_selected):
         name='MAPE',
         marker_color='blue' 
     )])
-    # bias_fig = go.Figure([go.Bar(x=list(metrics['bias'].keys()), y=list(metrics['bias'].values()), name='Bias')])
-    # accuracy_fig = go.Figure([go.Bar(x=list(metrics['accuracy'].keys()), y=list(metrics['accuracy'].values()), name='Accuracy')])
-    # mape_fig = go.Figure([go.Bar(x=list(metrics['mape'].keys()), y=list(metrics['mape'].values()), name='MAPE')])
 
-    # Update layout for better visuals
+    # Layout
     bias_fig.update_layout(
         xaxis_title='Models',
         yaxis_title='Bias',

@@ -1,10 +1,6 @@
 from dash import dcc, html
-from dash.dependencies import Input, Output
-import shap
-import plotly.graph_objs as go
 import matplotlib
 matplotlib.use('Agg')  # Switch to a non-interactive backend
-import matplotlib.pyplot as plt
 
 
 def render_tab3():
@@ -48,7 +44,6 @@ def render_tab3():
         ], style={'textAlign': 'left', 'marginBottom': '2.5cm'}),
 
 
-        #html.H2("Model Performance", style={'textAlign': 'left', 'fontSize': '28px'}),
 
 
         # Instruction line for dropdown (model selection)
@@ -82,13 +77,18 @@ def render_tab3():
         # Graph for comparing models' predictions
         dcc.Graph(id='model-comparison-graph'),
 
+
+        
+#----------------- Models Performance Metrics -------------------------------------------
+
+        
+        
         html.H3("Models Performance Metrics", style={
             'fontWeight': 'bold', 
             'textAlign': 'left', 
             'fontSize': '30px', 
             'marginTop': '3cm'  # 3 cm space to the top of the page
         }),
-        #html.H2("Model Performance ", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '50px'}),
         html.P("The bar chart evaluates each model based on three key metrics: Bias, Accuracy, and MAPE.",
                style={
                    'fontSize': '16px', 
@@ -139,8 +139,6 @@ def render_tab3():
             }
         ),
 
-        # Graph for comparing models' metrics (Bias, Accuracy, MAPE)
-        #dcc.Graph(id='model-metrics-bar-chart'),
         # Row of bar charts for Bias, Accuracy, and MAPE
         html.Div([
             # Bias Bar Chart
@@ -164,7 +162,10 @@ def render_tab3():
 
         
         
-        # SHAP Plots 
+#----------------- SHAP Plots ------------------------------------------------------------------
+
+
+
         html.H2("SHAP Summary Plots", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '50px'}),
 
         # SHAP Plot Section for XGBoost and LightGBM side by side
@@ -184,37 +185,14 @@ def render_tab3():
 
 
 
-#---------------- Feature Importance Section -----------------
+
+#---------------- Feature Importance Section --------------------------------------------------------
+
+
 
         html.H2("Feature Importance Analysis", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '50px'}),
 
-        # # Instruction line for dropdown (model selection)
-        # html.P("Select the models you would like to evaluate the feature importance", style={
-        #     'textAlign': 'left', 
-        #     'fontSize': '16px', 
-        #     'marginTop': '10px', 
-        #     'marginBottom': '15px'  
-        # }),
-
-        # # Dropdown for feature importance selection (XGBoost, LightGBM)
-        # dcc.Dropdown(
-        #     id='feature-importance-dropdown',
-        #     options=[
-        #         {'label': 'XGBoost', 'value': 'xgboost'},
-        #         {'label': 'LightGBM', 'value': 'lightgbm'}
-        #     ],
-        #     value=['xgboost', 'lightgbm'],  # Default to both models
-        #     multi=True,  # Allow selecting both
-        #     style={
-        #         'width': '500px',  
-        #         'display': 'inline-block',  
-        #         'marginTop': '20px',  
-        #         'marginLeft': '-10cm',  
-        #         'marginBottom': '15px'
-        #     }
-        # ),
-
-        # Row of Feature Importance Bar Charts (side by side)
+        # Row of Feature Importance Bar Charts 
         html.Div([
             # XGBoost Feature Importance
             html.Div([

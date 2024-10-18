@@ -30,7 +30,6 @@ def render_tab4():
             ], style={'fontSize': '16px', 'textAlign': 'left', 'lineHeight': '2.0'})
         ], style={'textAlign': 'left', 'marginBottom': '2cm'}),
         
-        #html.H2("Model Stress Testing on Storm Periods", style={'textAlign': 'left', 'fontSize': '28px'}),
 
         # Instruction for dropdown
         html.P("Select the models you want to test during storm periods", style={
@@ -56,6 +55,12 @@ def render_tab4():
 
         # Graph to show testing results
         dcc.Graph(id='storm-testing-graph'),
+
+
+
+#----------------- Backtesting -------------------------------------------
+
+
 
         # Section for Backtesting
         html.H2("Backtesting Metrics", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '4cm'}),

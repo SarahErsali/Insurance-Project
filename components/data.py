@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 
 
+# ---------------------- Database Simulation -------------------------------
+
+
 
 # Set random seed for reproducibility
 np.random.seed(42)
@@ -408,7 +411,14 @@ def generate_all_lob_data():
 # Generate final data
 final_data = generate_all_lob_data()
 
-#------------------------------------------------------------------------------
+
+
+
+#---------------- Data Preparation --------------------------------------------------------------
+
+
+
+
 property_data = final_data[final_data['Line_of_Business'] == 'Property'].reset_index(drop = True)
 
 # Feature Engineering (adding temporal features)

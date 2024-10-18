@@ -88,7 +88,9 @@ def render_content(tab):
 
     
 
-# Callback for Model Predictions Plot
+#--------------- Callback for Model Predictions Plot----------------
+
+
 @app.callback(
     Output('model-comparison-graph', 'figure'),
     Input('model-dropdown-prediction', 'value')
@@ -129,16 +131,17 @@ def update_model_predictions(models_selected):
     return fig
 
 
-# Callback for Metrics Bar Chart
+#-------------- Callback for Metrics Bar Chart --------------
+
+
 @app.callback(
-    Output('model-metrics-bar-chart', 'figure'),
+    [Output('model-bias-chart', 'figure'),
+     Output('model-accuracy-chart', 'figure'),
+     Output('model-mape-chart', 'figure')],
     Input('model-dropdown-metrics', 'value')
 )
 def update_metrics_chart(models_selected):
-    # New figure for the metrics bar chart
     metrics_fig = go.Figure()
-
-    # Metrics storage for bias, accuracy, and MAPE
     metrics = {'Bias': [], 'Accuracy': [], 'MAPE': []}
     model_names = []
 
@@ -195,61 +198,89 @@ def update_metrics_chart(models_selected):
         metrics[key] = [0.0 if np.isnan(value) else float(value) for value in metrics[key]]
     
 
+# Create vertical bar charts for each metric
+    bias_fig = go.Figure([go.Bar(x=model_names, y=metrics['Bias'], name='Bias', marker_color='orange')])
+    accuracy_fig = go.Figure([go.Bar(x=model_names, y=metrics['Accuracy'], name='Accuracy', marker_color='green')])
+    mape_fig = go.Figure([go.Bar(x=model_names, y=metrics['MAPE'], name='MAPE', marker_color='blue')])
 
-    # Create a horizontal bar chart for metrics (Bias, Accuracy, MAPE)
-    metrics_fig.add_trace(go.Bar(y=model_names, x=metrics['Bias'], name='Bias', marker_color='orange', opacity=0.7, orientation='h'))
-    metrics_fig.add_trace(go.Bar(y=model_names, x=metrics['Accuracy'], name='Accuracy', marker_color='green', opacity=0.5, orientation='h'))
-    metrics_fig.add_trace(go.Bar(y=model_names, x=metrics['MAPE'], name='MAPE', marker_color='blue', opacity=0.5, orientation='h'))
-
-    metrics_fig.update_layout(
-        barmode='group',
-        #title="Model Performance Metrics",
-        #yaxis_title="Model",
-        xaxis_title="Metric Value",
-        xaxis_showgrid=False,
-        yaxis_showgrid=False,
-        bargap=0.15,  # Increase space between bars
-        bargroupgap=0.3  # Increase space between groups
+    # Update layout for each chart
+    bias_fig.update_layout(
+        xaxis_title='Models', 
+        yaxis_title='Bias', 
+        xaxis_showgrid=False, 
+        yaxis_showgrid=False
+    )
+    accuracy_fig.update_layout(
+        xaxis_title='Models', 
+        yaxis_title='Accuracy', 
+        xaxis_showgrid=False, 
+        yaxis_showgrid=False, 
+        yaxis=dict(range=[0, 100])
+    )
+    mape_fig.update_layout(
+        xaxis_title='Models', 
+        yaxis_title='MAPE', 
+        xaxis_showgrid=False, 
+        yaxis_showgrid=False
     )
 
-    return metrics_fig
+    return bias_fig, accuracy_fig, mape_fig
 
 
 
 
-# Callback for Feature Importance Bar Chart
+#------------- Callback for Feature Importance Bar Chart -------------------
+
 @app.callback(
-    Output('feature-importance-bar-chart', 'figure'),
-    Input('feature-importance-dropdown', 'value')
+    [Output('xgboost-feature-importance-bar-chart', 'figure'),
+     Output('lightgbm-feature-importance-bar-chart', 'figure')],
+    Input('tabs-example', 'value')  # Listen to tab switch event, or you can use another Input if needed
 )
-def update_feature_importance_chart(selected_model):
-    if selected_model == 'xgboost':
-        feature_importance_df = get_xgboost_feature_importance(X_combined, y_combined)
-    elif selected_model == 'lightgbm':
-        feature_importance_df = get_lightgbm_feature_importance(X_combined, y_combined)
-
-    # Create bar chart
-    fig = go.Figure([go.Bar(
-        x=feature_importance_df['Feature'],
-        y=feature_importance_df['Importance'],
-        marker_color='orange' if selected_model == 'xgboost' else 'blue'
+def update_feature_importance_chart(_):
+    # Create the XGBoost Feature Importance Bar Chart
+    feature_importance_df_xgboost = get_xgboost_feature_importance(X_combined, y_combined)
+    xgboost_fig = go.Figure([go.Bar(
+        x=feature_importance_df_xgboost['Feature'],
+        y=feature_importance_df_xgboost['Importance'],
+        marker_color='orange'
     )])
 
-    fig.update_layout(
-        #title=f'{selected_model.capitalize()} Feature Importance',
+    xgboost_fig.update_layout(
         xaxis_title='Features',
         yaxis_title='Importance',
-        xaxis_tickangle=-45,  # Rotate x-axis labels if necessary
+        xaxis_tickangle=-45,
         height=500,
-        xaxis_showgrid=False,  # Remove grid lines from the x-axis
-        yaxis_showgrid=False,  # Remove grid lines from the y-axis
-        xaxis={'zeroline': False},  # Remove zero line on x-axis
-        yaxis={'zeroline': False}   # Remove zero line on y-axis
+        xaxis_showgrid=False,
+        yaxis_showgrid=False,
+        xaxis={'zeroline': False},
+        yaxis={'zeroline': False}
     )
 
-    return fig
+    # Create the LightGBM Feature Importance Bar Chart
+    feature_importance_df_lightgbm = get_lightgbm_feature_importance(X_combined, y_combined)
+    lightgbm_fig = go.Figure([go.Bar(
+        x=feature_importance_df_lightgbm['Feature'],
+        y=feature_importance_df_lightgbm['Importance'],
+        marker_color='blue'
+    )])
 
-# Callback for Stress Testing Plot
+    lightgbm_fig.update_layout(
+        xaxis_title='Features',
+        yaxis_title='Importance',
+        xaxis_tickangle=-45,
+        height=500,
+        xaxis_showgrid=False,
+        yaxis_showgrid=False,
+        xaxis={'zeroline': False},
+        yaxis={'zeroline': False}
+    )
+
+    return xgboost_fig, lightgbm_fig
+
+
+
+#---------- Callback for Stress Testing Plot -----------
+
 @app.callback(
     Output('storm-testing-graph', 'figure'),
     Input('model-dropdown-storm', 'value')
@@ -330,7 +361,9 @@ def update_storm_testing(models_selected):
     return fig
 
 
-# Callback for Backtesting Results (Three Bar Charts)
+#---------- Callback for Backtesting Results -------------
+
+
 @app.callback(
     [Output('backtest-bias-chart', 'figure'),
      Output('backtest-accuracy-chart', 'figure'),
@@ -409,9 +442,29 @@ def update_backtest_charts(models_selected):
             metrics['mape']['Moving Average'] = ma_results.loc['mean', 'mape']
 
     # Generate bar charts for each metric
-    bias_fig = go.Figure([go.Bar(x=list(metrics['bias'].keys()), y=list(metrics['bias'].values()), name='Bias')])
-    accuracy_fig = go.Figure([go.Bar(x=list(metrics['accuracy'].keys()), y=list(metrics['accuracy'].values()), name='Accuracy')])
-    mape_fig = go.Figure([go.Bar(x=list(metrics['mape'].keys()), y=list(metrics['mape'].values()), name='MAPE')])
+    bias_fig = go.Figure([go.Bar(
+        x=list(metrics['bias'].keys()), 
+        y=list(metrics['bias'].values()), 
+        name='Bias',
+        marker_color='orange'  
+    )])
+
+    accuracy_fig = go.Figure([go.Bar(
+        x=list(metrics['accuracy'].keys()), 
+        y=list(metrics['accuracy'].values()), 
+        name='Accuracy',
+        marker_color='green' 
+    )])
+
+    mape_fig = go.Figure([go.Bar(
+        x=list(metrics['mape'].keys()), 
+        y=list(metrics['mape'].values()), 
+        name='MAPE',
+        marker_color='blue' 
+    )])
+    # bias_fig = go.Figure([go.Bar(x=list(metrics['bias'].keys()), y=list(metrics['bias'].values()), name='Bias')])
+    # accuracy_fig = go.Figure([go.Bar(x=list(metrics['accuracy'].keys()), y=list(metrics['accuracy'].values()), name='Accuracy')])
+    # mape_fig = go.Figure([go.Bar(x=list(metrics['mape'].keys()), y=list(metrics['mape'].values()), name='MAPE')])
 
     # Update layout for better visuals
     bias_fig.update_layout(

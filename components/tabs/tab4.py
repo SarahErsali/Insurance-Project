@@ -58,10 +58,10 @@ def render_tab4():
         dcc.Graph(id='storm-testing-graph'),
 
         # Section for Backtesting
-        html.H2("Backtesting Results", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '4cm'}),
+        html.H2("Backtesting Metrics", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '4cm'}),
         
         # Instruction for dropdown
-        html.P("Select the models you want to see backtesting results for", style={
+        html.P("Select the models you want to see backtesting metrics for", style={
             'textAlign': 'left', 
             'fontSize': '16px', 
             'marginTop': '10px', 
@@ -82,22 +82,26 @@ def render_tab4():
             style={'width': '500px', 'display': 'inline-block', 'marginLeft': '-10cm'}
         ),
 
-        # Bias Bar Chart
+        # Row of bar charts for Bias, Accuracy, and MAPE
         html.Div([
-            html.H3("Bias Comparison", style={'textAlign': 'center', 'fontSize': '20px'}),
-            dcc.Graph(id='backtest-bias-chart')
-        ], style={'marginTop': '20px'}),
+            # Bias Bar Chart
+            html.Div([
+                html.H3("Bias", style={'textAlign': 'center', 'fontSize': '20px'}),
+                dcc.Graph(id='backtest-bias-chart')
+            ], style={'flex': '1', 'padding': '10px'}),  # Set flexbox layout for equal width
 
-        # Accuracy Bar Chart
-        html.Div([
-            html.H3("Accuracy Comparison", style={'textAlign': 'center', 'fontSize': '20px'}),
-            dcc.Graph(id='backtest-accuracy-chart')
-        ], style={'marginTop': '20px'}),
+            # Accuracy Bar Chart
+            html.Div([
+                html.H3("Accuracy", style={'textAlign': 'center', 'fontSize': '20px'}),
+                dcc.Graph(id='backtest-accuracy-chart')
+            ], style={'flex': '1', 'padding': '10px'}),  # Set flexbox layout for equal width
 
-        # MAPE Bar Chart
-        html.Div([
-            html.H3("MAPE Comparison", style={'textAlign': 'center', 'fontSize': '20px'}),
-            dcc.Graph(id='backtest-mape-chart')
-        ], style={'marginTop': '20px'}),
+            # MAPE Bar Chart
+            html.Div([
+                html.H3("MAPE %", style={'textAlign': 'center', 'fontSize': '20px'}),
+                dcc.Graph(id='backtest-mape-chart')
+            ], style={'flex': '1', 'padding': '10px'})  # Set flexbox layout for equal width
+        ], style={'display': 'flex', 'justifyContent': 'space-between'})
+       
 
     ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})

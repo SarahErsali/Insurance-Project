@@ -365,7 +365,7 @@ def get_arima_predictions_storm():
                                        enforce_invertibility=False)
     
     final_arima_model_fit = final_arima_model.fit(disp=False, maxiter=1000, tol=1e-6)
-    return final_arima_model_fit.forecast(steps=len(property_data_model.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')))
+    return final_arima_model_fit.forecast(steps=len(property_data_model))
 
 # Function to get Moving Average predictions for storm periods
 def get_moving_average_predictions_storm():

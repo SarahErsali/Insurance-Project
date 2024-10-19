@@ -4,6 +4,7 @@ import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
+import statsmodels.api as sm
 from components.tabs.home_tab import render_home_tab
 from components.tabs.tab2 import render_tab2
 from components.tabs.tab1 import render_tab1
@@ -31,7 +32,9 @@ from components.model_functions import (
     get_xgb_backtest_results,
     get_lgb_backtest_results,
     get_arima_backtest_results,
-    get_ma_backtest_results
+    get_ma_backtest_results,
+    generate_forecast_tables,
+    re_lgb_model
 )
 
 
@@ -368,7 +371,6 @@ def update_backtest_charts(models_selected):
     for model in models_selected:
         if model == 'xgboost':
             xgb_results = get_xgb_backtest_results(property_data_feature_selected)
-
             metrics['bias']['XGBoost'] = xgb_results.loc['mean', 'bias']
             metrics['accuracy']['XGBoost'] = xgb_results.loc['mean', 'accuracy']
             metrics['mape']['XGBoost'] = xgb_results.loc['mean', 'mape']
@@ -376,7 +378,6 @@ def update_backtest_charts(models_selected):
         elif model == 'lightgbm':
             
             lgb_results = get_lgb_backtest_results(property_data_feature_selected)
-
             metrics['bias']['LightGBM'] = lgb_results.loc['mean', 'bias']
             metrics['accuracy']['LightGBM'] = lgb_results.loc['mean', 'accuracy']
             metrics['mape']['LightGBM'] = lgb_results.loc['mean', 'mape']
@@ -384,8 +385,6 @@ def update_backtest_charts(models_selected):
         elif model == 'arima':
             
             arima_results = get_arima_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
-          
-
             metrics['bias']['ARIMA'] = arima_results.loc['mean', 'bias']
             metrics['accuracy']['ARIMA'] = arima_results.loc['mean', 'accuracy']
             metrics['mape']['ARIMA'] = arima_results.loc['mean', 'mape']
@@ -393,7 +392,6 @@ def update_backtest_charts(models_selected):
         elif model == 'moving_average':
             
             ma_results = get_ma_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
-
             metrics['bias']['Moving Average'] = ma_results.loc['mean', 'bias']
             metrics['accuracy']['Moving Average'] = ma_results.loc['mean', 'accuracy']
             metrics['mape']['Moving Average'] = ma_results.loc['mean', 'mape']
@@ -422,21 +420,21 @@ def update_backtest_charts(models_selected):
 
     # Layout
     bias_fig.update_layout(
-        xaxis_title='Models',
+        #xaxis_title='Models',
         yaxis_title='Bias',
         yaxis=dict(showgrid=False),
         bargap=0.15,
         bargroupgap=0.2
     )
     accuracy_fig.update_layout(
-        xaxis_title='Models',
+        #xaxis_title='Models',
         yaxis_title='Accuracy',
         yaxis=dict(showgrid=False, range=[0, 100]),
         bargap=0.15,
         bargroupgap=0.2
     )
     mape_fig.update_layout(
-        xaxis_title='Models',
+        #xaxis_title='Models',
         yaxis_title='MAPE',
         yaxis=dict(showgrid=False),
         bargap=0.15,
@@ -444,6 +442,34 @@ def update_backtest_charts(models_selected):
     )
 
     return bias_fig, accuracy_fig, mape_fig
+
+
+
+#---------- Callback for Business Solution -------------
+
+
+
+@app.callback(
+    Output('future-prediction-table', 'data'),
+    Input('tabs-example', 'value')
+)
+def update_future_prediction_table(tab):
+    if tab == 'tab-5':
+        # Fit the ARIMA model inside the callback
+        arima_y_train = arima_train_data['Claims_Incurred']
+        best_pdq = (3, 2, 3)  # ARIMA order
+        best_seasonal_pdq = (1, 1, 1, 12)  # Seasonal order
+        final_arima_model = sm.tsa.SARIMAX(arima_y_train, order=best_pdq, seasonal_order=best_seasonal_pdq, enforce_stationarity=False, enforce_invertibility=False)
+        final_arima_model_fit = final_arima_model.fit(disp=False)
+
+        # Call the function to generate the forecast table using the fitted ARIMA model
+        final_forecast_table = generate_forecast_tables(final_arima_model_fit, re_lgb_model, X_combined)
+        
+        # Convert the DataFrame to a list of dictionaries to use in Dash DataTable
+        return final_forecast_table.to_dict('records')
+    
+    return []  # Return an empty table if the tab is not 'tab-5'
+
 
 
 

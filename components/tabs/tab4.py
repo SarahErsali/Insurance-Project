@@ -2,17 +2,18 @@ from dash import html, dcc
 
 def render_tab4():
     return html.Div([
+        # Title for Storm Testing
         html.H2("Models Stress Testing on Storm Periods", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '3cm'}),
 
+        # Description for Storm Testing
         html.P("The storm period plot presents a clear difference in how the models perform during storm events.",
                style={
                    'fontSize': '16px', 
                    'textAlign': 'left', 
                    'lineHeight': '2.0',
-                   #'marginTop': '3cm'  # Space from the top of the page
                }),
 
-        # Bullet points with bold titles
+        # Bullet points explaining each model's performance during storm periods
         html.Ul([
             html.Li([
                 html.Span("XGBoost: ", style={'fontWeight': 'bold'}),
@@ -21,25 +22,25 @@ def render_tab4():
 
             html.Li([
                 html.Span("LightGBM: ", style={'fontWeight': 'bold'}),
-                "LightGBM shows larger deviations from the actual claims, particularly during the later storm periods, where it underestimates the claims significantly. This suggests that XGBoost is better at handling these extreme conditions and LightGBM struggles more with the volatility introduced by storm scenarios, resulting in more significant errors."
+                "LightGBM shows larger deviations from the actual claims, particularly during the later storm periods, where it underestimates the claims significantly."
             ], style={'fontSize': '16px', 'textAlign': 'left', 'lineHeight': '2.0'}),
 
             html.Li([
                 html.Span("LightGBM (2023-05): ", style={'fontWeight': 'bold'}),
-                "The drop in predicted claims for LightGBM during the storm period (2023-05) is particularly notable, where it predicts significantly lower values than the actual observed claims."
+                "The drop in predicted claims for LightGBM during the storm period (2023-05) is particularly notable."
             ], style={'fontSize': '16px', 'textAlign': 'left', 'lineHeight': '2.0'})
         ], style={'textAlign': 'left', 'marginBottom': '2cm'}),
         
 
-        # Instruction for dropdown
-        html.P("Select the models you want to test during storm periods", style={
+        # Instruction for storm model selection
+        html.P("Select the models you want to test during storm periods:", style={
             'textAlign': 'left', 
             'fontSize': '16px', 
             'marginTop': '10px', 
             'marginBottom': '15px'
         }),
 
-        # Dropdown for model selection
+        # Dropdown for storm model selection
         dcc.Dropdown(
             id='model-dropdown-storm',
             options=[
@@ -50,23 +51,21 @@ def render_tab4():
             ],
             value=['xgboost'],  # Default value
             multi=True,  # Allow selecting multiple models
-            style={'width': '500px', 'display': 'inline-block', 'marginLeft': '-10cm'}
+            style={'width': '50%', 'margin': 'auto'}
         ),
 
-        # Graph to show testing results
+        # Graph for storm testing
         dcc.Graph(id='storm-testing-graph'),
 
 
 
-#----------------- Backtesting -------------------------------------------
+#----------------- Backtesting Section -------------------------------------------
 
-
-
-        # Section for Backtesting
+        # Title for Backtesting
         html.H2("Backtesting Metrics", style={'textAlign': 'left', 'fontSize': '28px', 'marginTop': '4cm'}),
-        
-        # Instruction for dropdown
-        html.P("Select the models you want to see backtesting metrics for", style={
+
+        # Instruction for backtesting dropdown
+        html.P("Select the models you want to see backtesting metrics for:", style={
             'textAlign': 'left', 
             'fontSize': '16px', 
             'marginTop': '10px', 
@@ -84,29 +83,28 @@ def render_tab4():
             ],
             value=['xgboost'],  # Default value
             multi=True,  # Allow selecting multiple models
-            style={'width': '500px', 'display': 'inline-block', 'marginLeft': '-10cm'}
+            style={'width': '50%', 'margin': 'auto'}
         ),
 
-        # Row of bar charts for Bias, Accuracy, and MAPE
+        # Stacked bar charts for Bias, Accuracy, and MAPE (now vertically aligned)
         html.Div([
             # Bias Bar Chart
             html.Div([
                 html.H3("Bias", style={'textAlign': 'center', 'fontSize': '20px'}),
                 dcc.Graph(id='backtest-bias-chart')
-            ], style={'flex': '1', 'padding': '10px'}),  # Set flexbox layout for equal width
+            ], style={'padding': '10px'}),  # No flex needed for stacking
 
             # Accuracy Bar Chart
             html.Div([
-                html.H3("Accuracy", style={'textAlign': 'center', 'fontSize': '20px'}),
+                html.H3("Accuracy %", style={'textAlign': 'center', 'fontSize': '20px'}),
                 dcc.Graph(id='backtest-accuracy-chart')
-            ], style={'flex': '1', 'padding': '10px'}),  # Set flexbox layout for equal width
+            ], style={'padding': '10px'}),  # No flex needed for stacking
 
             # MAPE Bar Chart
             html.Div([
                 html.H3("MAPE %", style={'textAlign': 'center', 'fontSize': '20px'}),
                 dcc.Graph(id='backtest-mape-chart')
-            ], style={'flex': '1', 'padding': '10px'})  # Set flexbox layout for equal width
-        ], style={'display': 'flex', 'justifyContent': 'space-between'})
-       
+            ], style={'padding': '10px'})  # No flex needed for stacking
+        ], style={'display': 'block'}),  # Use block display to stack elements
 
-    ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})
+        ], style={'padding': '20px', 'paddingLeft': '3cm', 'paddingRight': '3cm'})

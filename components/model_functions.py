@@ -244,19 +244,11 @@ def get_moving_average_predictions_storm():
 
 #------------- Function to get Back Testing -------------------------------------------------------------------
 
-# Parameters:
-#     - data: DataFrame containing the data to backtest.
-#     - model_type: String specifying the model ('xgb', 'lgb', 'arima', 'ma').
-#     - window: Integer specifying the size of the rolling window.
-
-#     Returns:
-#     - DataFrame with statistical summary of backtesting results.
 
 
-
-def backtest(data, model_type, window=24, test_size=12, num_cycles=3):
+def backtest_with_coc(data, model_type, window=24, test_size=12, num_cycles=3):
     metrics = {'bias': [], 'accuracy': [], 'mape': []}
-
+    
     for i in range(num_cycles):
         train, test = data.iloc[i:i + window], data.iloc[i + window:i + window + test_size]
         b_X_train = train.drop(['Claims_Incurred', 'Date'], axis=1, errors='ignore')
@@ -271,34 +263,33 @@ def backtest(data, model_type, window=24, test_size=12, num_cycles=3):
         elif model_type == 'arima':
             arima_model = sm.tsa.SARIMAX(b_y_train, order=(3, 2, 3), seasonal_order=(1, 1, 1, 12))
             arima_fitted = arima_model.fit(disp=False)
-            preds = arima_fitted.forecast(test_size)
-                                
+            preds = arima_fitted.forecast(test_size)  # Forecast the test size for ARIMA
         elif model_type == 'ma':
-            preds = [b_y_train.rolling(window=3).mean().iloc[-1]] * test_size
-
+            preds = [b_y_train.rolling(window=3).mean().iloc[-1]] * test_size  # Repeat the MA prediction for test size
         
         bias = np.mean(preds - b_y_test)
         accuracy = 100 - (mean_absolute_percentage_error(b_y_test, preds) * 100)
         mape = mean_absolute_percentage_error(b_y_test, preds) * 100
 
+        
         metrics['bias'].append(bias)
         metrics['accuracy'].append(accuracy)
         metrics['mape'].append(mape)
 
-    return pd.DataFrame(metrics).describe()
+    return metrics
 
 
 def get_xgb_backtest_results(data):
-    return backtest(data, 'xgb', window=66, test_size=12, num_cycles=3)
+    return backtest_with_coc(data, 'xgb', window=66, test_size=12, num_cycles=3)
 
 def get_lgb_backtest_results(data):
-    return backtest(data, 'lgb', window=66, test_size=12, num_cycles=3)
+    return backtest_with_coc(data, 'lgb', window=66, test_size=12, num_cycles=3)
 
 def get_arima_backtest_results(data):
-    return backtest(data, 'arima', window=66, test_size=12, num_cycles=3)
+    return backtest_with_coc(data, 'arima', window=66, test_size=12, num_cycles=3)
 
 def get_ma_backtest_results(data):
-    return backtest(data, 'ma', window=66, test_size=12, num_cycles=3)
+    return backtest_with_coc(data, 'ma', window=66, test_size=12, num_cycles=3)
 
 
 

@@ -13,7 +13,7 @@ def render_tab5():
             id='future-prediction-table',
             columns=[#{'name': 'LOB', 'id': 'LOB'}, 
                      {'name': 'Date', 'id': 'Date'},
-                     {'name': 'Prediction', 'id': 'Prediction'},
+                     {'name': 'Prediction of Property LOB', 'id': 'Prediction'},
                      {'name': 'Model', 'id': 'Model'}],
             style_cell={
                 'textAlign': 'center',  # Center align text
@@ -31,4 +31,4 @@ def render_tab5():
                 'fontSize': '14px',  # Set a slightly larger font for the headers
             },
         )  
-    ], style={'paddingTop': '3cm', 'paddingBottom': '3cm', 'paddingLeft': '20px', 'paddingRight': '20px'})  
+    ], style={'paddingTop': '3cm', 'paddingBottom': '3cm', 'paddingLeft': '20px', 'paddingRight': '20px'}) 

@@ -29,6 +29,7 @@ from components.model_functions import (
     get_arima_predictions_storm,
     get_moving_average_predictions_storm,
     ts_actual_y,
+    backtest_with_coc,
     get_xgb_backtest_results,
     get_lgb_backtest_results,
     get_arima_backtest_results,
@@ -58,7 +59,7 @@ app.layout = html.Div([
         dcc.Tab(label='Exploratory Data Analysis', value='tab-2'),
         dcc.Tab(label='Model Performance', value='tab-3'),
         dcc.Tab(label='Model Robustness', value='tab-4'),
-        dcc.Tab(label='Solution', value='tab-5'),
+        dcc.Tab(label='Business Solution', value='tab-5'),
     ]),
 
     # Content section that changes with each tab
@@ -365,80 +366,88 @@ def update_storm_testing(models_selected):
     Input('model-dropdown-backtest', 'value')
 )
 def update_backtest_charts(models_selected):
+    # Initialize a dictionary to store metrics for each selected model
     metrics = {'bias': {}, 'accuracy': {}, 'mape': {}}
 
+    # Mapping from dropdown values to the display names used in the metrics dictionary
+    model_name_mapping = {
+        'xgboost': 'XGBoost',
+        'lightgbm': 'LightGBM',
+        'arima': 'ARIMA',
+        'moving_average': 'Moving Average'
+    }
 
+    # Color scheme for different models (distinguishable shades)
+    color_mapping = {
+        'xgboost': {'bias': 'orange', 'accuracy': 'lightgreen', 'mape': 'lightblue'},
+        'lightgbm': {'bias': 'darkorange', 'accuracy': 'green', 'mape': 'blue'},
+        'arima': {'bias': 'gold', 'accuracy': 'darkgreen', 'mape': 'navy'},
+        'moving_average': {'bias': 'chocolate', 'accuracy': 'forestgreen', 'mape': 'royalblue'}
+    }
+
+    # Loop through the selected models and retrieve backtest results for each one
     for model in models_selected:
         if model == 'xgboost':
-            xgb_results = get_xgb_backtest_results(property_data_feature_selected)
-            metrics['bias']['XGBoost'] = xgb_results.loc['mean', 'bias']
-            metrics['accuracy']['XGBoost'] = xgb_results.loc['mean', 'accuracy']
-            metrics['mape']['XGBoost'] = xgb_results.loc['mean', 'mape']
-        
+            xgb_metrics = get_xgb_backtest_results(property_data_feature_selected)
+            metrics['bias']['XGBoost'] = xgb_metrics['bias']
+            metrics['accuracy']['XGBoost'] = xgb_metrics['accuracy']
+            metrics['mape']['XGBoost'] = xgb_metrics['mape']
+
         elif model == 'lightgbm':
-            
-            lgb_results = get_lgb_backtest_results(property_data_feature_selected)
-            metrics['bias']['LightGBM'] = lgb_results.loc['mean', 'bias']
-            metrics['accuracy']['LightGBM'] = lgb_results.loc['mean', 'accuracy']
-            metrics['mape']['LightGBM'] = lgb_results.loc['mean', 'mape']
+            lgb_metrics = get_lgb_backtest_results(property_data_feature_selected)
+            metrics['bias']['LightGBM'] = lgb_metrics['bias']
+            metrics['accuracy']['LightGBM'] = lgb_metrics['accuracy']
+            metrics['mape']['LightGBM'] = lgb_metrics['mape']
 
         elif model == 'arima':
-            
-            arima_results = get_arima_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
-            metrics['bias']['ARIMA'] = arima_results.loc['mean', 'bias']
-            metrics['accuracy']['ARIMA'] = arima_results.loc['mean', 'accuracy']
-            metrics['mape']['ARIMA'] = arima_results.loc['mean', 'mape']
-        
+            arima_metrics = get_arima_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
+            metrics['bias']['ARIMA'] = arima_metrics['bias']
+            metrics['accuracy']['ARIMA'] = arima_metrics['accuracy']
+            metrics['mape']['ARIMA'] = arima_metrics['mape']
+
         elif model == 'moving_average':
-            
-            ma_results = get_ma_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
-            metrics['bias']['Moving Average'] = ma_results.loc['mean', 'bias']
-            metrics['accuracy']['Moving Average'] = ma_results.loc['mean', 'accuracy']
-            metrics['mape']['Moving Average'] = ma_results.loc['mean', 'mape']
+            ma_metrics = get_ma_backtest_results(property_data_model[['Date', 'Claims_Incurred']])
+            metrics['bias']['Moving Average'] = ma_metrics['bias']
+            metrics['accuracy']['Moving Average'] = ma_metrics['accuracy']
+            metrics['mape']['Moving Average'] = ma_metrics['mape']
 
-    # Generate bar charts for each metric
-    bias_fig = go.Figure([go.Bar(
-        x=list(metrics['bias'].keys()), 
-        y=list(metrics['bias'].values()), 
-        name='Bias',
-        marker_color='orange'  
-    )])
+    cycles = ['Cycle 1', 'Cycle 2', 'Cycle 3']
 
-    accuracy_fig = go.Figure([go.Bar(
-        x=list(metrics['accuracy'].keys()), 
-        y=list(metrics['accuracy'].values()), 
-        name='Accuracy',
-        marker_color='green' 
-    )])
+    bias_fig = go.Figure()
+    accuracy_fig = go.Figure()
+    mape_fig = go.Figure()
 
-    mape_fig = go.Figure([go.Bar(
-        x=list(metrics['mape'].keys()), 
-        y=list(metrics['mape'].values()), 
-        name='MAPE',
-        marker_color='blue' 
-    )])
+    # Add traces to each figure based on selected models
+    for model in models_selected:
+        model_display_name = model_name_mapping[model]
+        
+        if model_display_name in metrics['bias']:
+            # Use different colors for each model
+            bias_color = color_mapping[model]['bias']
+            accuracy_color = color_mapping[model]['accuracy']
+            mape_color = color_mapping[model]['mape']
 
-    # Layout
+            bias_fig.add_trace(go.Bar(x=cycles, y=metrics['bias'][model_display_name], name=f'{model_display_name}', marker_color=bias_color))
+            accuracy_fig.add_trace(go.Bar(x=cycles, y=metrics['accuracy'][model_display_name], name=f'{model_display_name}', marker_color=accuracy_color))
+            mape_fig.add_trace(go.Bar(x=cycles, y=metrics['mape'][model_display_name], name=f'{model_display_name}', marker_color=mape_color))
+
     bias_fig.update_layout(
-        #xaxis_title='Models',
-        yaxis_title='Bias',
-        yaxis=dict(showgrid=False),
-        bargap=0.15,
-        bargroupgap=0.2
+        bargap=0.15, 
+        bargroupgap=0.2,
+        xaxis=dict(showgrid=False), 
+        yaxis=dict(showgrid=False)  
     )
     accuracy_fig.update_layout(
-        #xaxis_title='Models',
-        yaxis_title='Accuracy',
-        yaxis=dict(showgrid=False, range=[0, 100]),
-        bargap=0.15,
-        bargroupgap=0.2
+        bargap=0.15, 
+        bargroupgap=0.2,
+        xaxis=dict(showgrid=False),  
+        yaxis=dict(showgrid=False)   
     )
     mape_fig.update_layout(
-        #xaxis_title='Models',
-        yaxis_title='MAPE',
-        yaxis=dict(showgrid=False),
-        bargap=0.15,
-        bargroupgap=0.2
+        bargap=0.15, 
+        bargroupgap=0.2,
+        xaxis=dict(showgrid=False), 
+        yaxis=dict(showgrid=False)   
     )
 
     return bias_fig, accuracy_fig, mape_fig

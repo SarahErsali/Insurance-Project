@@ -29,13 +29,11 @@ from components.model_functions import (
     get_arima_predictions_storm,
     get_moving_average_predictions_storm,
     ts_actual_y,
-    backtest_with_coc,
     get_xgb_backtest_results,
     get_lgb_backtest_results,
     get_arima_backtest_results,
     get_ma_backtest_results,
-    generate_forecast_tables,
-    re_lgb_model
+    generate_forecast_tables
 )
 
 
@@ -464,18 +462,21 @@ def update_backtest_charts(models_selected):
 )
 def update_future_prediction_table(tab):
     if tab == 'tab-5':
-        # Fit the ARIMA model inside the callback
         arima_y_train = arima_train_data['Claims_Incurred']
-        best_pdq = (3, 2, 3)  # ARIMA order
-        best_seasonal_pdq = (1, 1, 1, 12)  # Seasonal order
+        best_pdq = (3, 2, 3)  
+        best_seasonal_pdq = (1, 1, 1, 12) 
         final_arima_model = sm.tsa.SARIMAX(arima_y_train, order=best_pdq, seasonal_order=best_seasonal_pdq, enforce_stationarity=False, enforce_invertibility=False)
         final_arima_model_fit = final_arima_model.fit(disp=False)
 
         # Call the function to generate the forecast table using the fitted ARIMA model
-        final_forecast_table = generate_forecast_tables(final_arima_model_fit, re_lgb_model, X_combined)
+        final_forecast_table = generate_forecast_tables(final_arima_model_fit)
+
         
         # Convert the DataFrame to a list of dictionaries to use in Dash DataTable
-        return final_forecast_table.to_dict('records')
+        table_data = final_forecast_table.to_dict('records')
+
+        
+        return table_data
     
     return []  # Return an empty table if the tab is not 'tab-5'
 

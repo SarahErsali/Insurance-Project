@@ -299,7 +299,7 @@ def get_ma_backtest_results(data):
 
 
 
-def generate_forecast_tables(final_arima_model_fit, re_lgb_model, X_combined):
+def generate_forecast_tables(final_arima_model_fit):
     # ARIMA Forecast (Nov 2024 - Oct 2025)
     forecast_dates = pd.date_range(start='2024-11-01', periods=12, freq='ME')
     arima_future_predictions = final_arima_model_fit.forecast(steps=12)
@@ -313,69 +313,8 @@ def generate_forecast_tables(final_arima_model_fit, re_lgb_model, X_combined):
 
     arima_forecast_table.reset_index(drop=True, inplace=True)
 
-    # LightGBM Future Forecast (Nov 2024 - Oct 2025)
-    # Generate future months and quarters
-    lgb_future_dates = pd.date_range(start='2024-11-01', periods=12, freq='ME')
-    lgb_future_months = lgb_future_dates.month
-    lgb_future_quarters = lgb_future_dates.quarter
-
-    # Static features from X_combined
-    latest_gdp_growth_rate = X_combined['GDP_Growth_Rate'].iloc[-1]
-    latest_inflation_rate = X_combined['Inflation_Rate'].iloc[-1]
-    latest_unemployment_rate = X_combined['Unemployment_Rate'].iloc[-1]
-    latest_interest_rate = X_combined['Interest_Rate'].iloc[-1]
-    latest_equity_return = X_combined['Equity_Return'].iloc[-1]
-    latest_expenses = X_combined['Expenses'].iloc[-1]
-    latest_scr = X_combined['SCR'].iloc[-1]
-
-    # Assuming no crisis in the future
-    future_is_crisis = [0] * 12
-
-    # Create the future feature set for LightGBM
-    lgb_future_features = pd.DataFrame({
-        'GDP_Growth_Rate': [latest_gdp_growth_rate] * 12,
-        'Inflation_Rate': [latest_inflation_rate] * 12,
-        'Unemployment_Rate': [latest_unemployment_rate] * 12,
-        'Interest_Rate': [latest_interest_rate] * 12,
-        'Equity_Return': [latest_equity_return] * 12,
-        'Expenses': [latest_expenses] * 12,
-        'Month': lgb_future_months,
-        'Quarter': lgb_future_quarters,
-        'SCR': [latest_scr] * 12,
-        'Is_Crisis': future_is_crisis
-    })
-
-    # Predict future claims with LightGBM
-    lgb_future_predictions = re_lgb_model.predict(lgb_future_features)
-
-    lgb_forecast_table = pd.DataFrame({
-        'LOB': 'Property',
-        'Date': lgb_future_dates.strftime('%Y-%b'),
-        'Prediction': lgb_future_predictions.round(2),
-        'Model': 'LightGBM'
-    })
-
-    lgb_forecast_table.reset_index(drop=True, inplace=True)
-
-    # Combine ARIMA and LightGBM Predictions
-    combined_forecast_table = pd.DataFrame({
-        'LOB': 'Property',
-        'Date': arima_forecast_table['Date'],
-        'ARIMA_Prediction': arima_forecast_table['Prediction'],
-        'LightGBM_Prediction': lgb_forecast_table['Prediction']
-    })
-
-    # Select the best prediction (can customize the selection criteria)
-    combined_forecast_table['Best_Prediction'] = combined_forecast_table[['ARIMA_Prediction', 'LightGBM_Prediction']].min(axis=1)
-
-    # Assign the best model
-    combined_forecast_table['Model'] = np.where(
-        combined_forecast_table['Best_Prediction'] == combined_forecast_table['ARIMA_Prediction'], 'ARIMA', 'LightGBM'
-    )
-
-    # Create the final forecast table
-    final_forecast_table = combined_forecast_table[['LOB', 'Date', 'Best_Prediction', 'Model']].copy()
-    final_forecast_table.rename(columns={'Best_Prediction': 'Prediction'}, inplace=True)
+    # Since ARIMA is now the only model being considered, the best prediction is always ARIMA
+    final_forecast_table = arima_forecast_table[['LOB', 'Date', 'Prediction', 'Model']].copy()
 
     # Modify the 'LOB' column to only show 'Property' in the middle row
     middle_row = len(final_forecast_table) // 2

@@ -471,6 +471,9 @@ def update_future_prediction_table(tab):
         # Call the function to generate the forecast table using the fitted ARIMA model
         final_forecast_table = generate_forecast_tables(final_arima_model_fit)
 
+        # Format the 'Prediction' column to scientific notation with 5 decimals
+        final_forecast_table['Prediction'] = final_forecast_table['Prediction'].apply(lambda x: f'{x:.5e}')
+
         
         # Convert the DataFrame to a list of dictionaries to use in Dash DataTable
         table_data = final_forecast_table.to_dict('records')
